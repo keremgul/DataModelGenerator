@@ -9,12 +9,6 @@ namespace DataModelGenerator.Core.Pipeline;
 /// </summary>
 public class PipelineContext
 {
-    /// <summary>
-    /// Soru–cevap döngüsünün üst sınırı. Bu tur sayısına ulaşıldığında yeni soru
-    /// üretilmez; kalan belirsizlikler öneri olarak raporlanır.
-    /// </summary>
-    public const int MaxQuestionRounds = 3;
-
     public ProjectInput Input { get; set; } = new();
     public DataModel Model { get; set; } = new();
     public List<Ambiguity> Ambiguities { get; } = new();
@@ -25,12 +19,10 @@ public class PipelineContext
     public string Summary { get; set; } = string.Empty;
     public int RoundNumber { get; set; }
 
-    /// <summary>Kaç kez soru üretildiği. <see cref="MaxQuestionRounds"/> ile sınırlıdır.</summary>
+    /// <summary>Kaç kez soru üretildiği — bilgi amaçlı sayaç, üretimi engellemez.</summary>
     public int QuestionRounds { get; set; }
 
     public List<string> RepromptNotes { get; } = new();
-
-    public bool QuestionLimitReached => QuestionRounds >= MaxQuestionRounds;
 
     /// <summary>Boşsa tüm varlıklar işlenir; doluysa yalnızca bu varlıklar LLM'e gönderilir.</summary>
     public HashSet<string> Scope { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -49,8 +41,7 @@ public class PipelineContext
         Questions = new List<ClarifyingQuestion>(Questions),
         ValidationIssues = new List<ValidationIssue>(ValidationIssues),
         RepromptNotes = new List<string>(RepromptNotes),
-        QuestionRoundsUsed = QuestionRounds,
-        QuestionLimitReached = QuestionLimitReached
+        QuestionRoundsUsed = QuestionRounds
     };
 }
 

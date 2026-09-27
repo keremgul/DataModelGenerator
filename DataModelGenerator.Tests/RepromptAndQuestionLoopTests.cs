@@ -170,57 +170,118 @@ public class RepromptAndQuestionLoopTests
     }
 
     [Fact]
-    public async Task Sorular_TurSinirinaUlasincaYeniSoruUretilmez()
+    public async Task Sorular_CevapUygulandigindaKendiliginden_YeniSoruUretilmez()
     {
-        var provider = new FakeModelProvider();
-        var pipeline = new ModelPipeline(provider, new ProviderConnectionSettings(), "fake-model");
+        var (pipeline, provider) = Build();
         var context = new PipelineContext { Input = SampleInput() };
+        var package = await pipeline.GenerateAsync(context);
 
-        await pipeline.GenerateAsync(context);
+        // Yeni bir belirsizlik ortaya çıksa bile soru üretimi otomatik tetiklenmemeli.
+        provider.GapsResponseOverride = """
+            {
+              "ambiguities": [
+                { "target": "Musteri", "kind": "PrimaryKey", "impact": "High",
+                  "description": "Yeni bir belirsizlik", "confidence": 0.3 }
+              ]
+            }
+            """;
 
-        // Her turda yeni bir belirsizlik + soru üreten bir sağlayıcı taklit edilir.
-        for (var round = 2; round <= PipelineContext.MaxQuestionRounds + 2; round++)
-        {
-            provider.GapsResponseOverride = $$"""
-                {
-                  "ambiguities": [
-                    { "target": "Hedef{{round}}", "kind": "Cardinality", "impact": "High",
-                      "description": "Tur {{round}} belirsizliği", "confidence": 0.3 }
-                  ]
-                }
-                """;
-            provider.QuestionsResponseOverride = $$"""
-                {
-                  "questions": [
-                    { "ambiguityId": "A{{round}}", "text": "Tur {{round}} sorusu", "reason": "test", "options": [] }
-                  ]
-                }
-                """;
+        package.Questions[0].Answer = "Evet";
+        provider.Stages.Clear();
+        var updated = await pipeline.ApplyAnswersAsync(context, [package.Questions[0]]);
 
-            var open = context.Questions.Where(q => !q.IsApplied).ToList();
-            if (open.Count == 0) break;
-
-            foreach (var q in open) q.Answer = "Evet";
-            await pipeline.ApplyAnswersAsync(context, open);
-        }
-
-        Assert.True(context.QuestionRounds <= PipelineContext.MaxQuestionRounds,
-            $"Soru turu sınırı aşıldı: {context.QuestionRounds}");
-        Assert.True(context.QuestionLimitReached);
-        Assert.Empty(context.Questions.Where(q => !q.IsApplied));
+        Assert.DoesNotContain("questions", provider.Stages);
+        Assert.Empty(updated.OpenQuestions);
     }
 
     [Fact]
-    public async Task Sorular_SinirAsildigindaPakette_Raporlanir()
+    public async Task Sorular_KullaniciIstediginde_YeniSoruUretilir()
     {
-        var (pipeline, _) = Build();
+        var (pipeline, provider) = Build();
         var context = new PipelineContext { Input = SampleInput() };
-        context.QuestionRounds = PipelineContext.MaxQuestionRounds;
-
         var package = await pipeline.GenerateAsync(context);
 
-        Assert.True(package.QuestionLimitReached);
-        Assert.Empty(package.OpenQuestions);
-        Assert.Contains(package.NormalizationNotes, n => n.Contains("Soru turu sınırına"));
+        package.Questions[0].Answer = "Evet";
+        await pipeline.ApplyAnswersAsync(context, [package.Questions[0]]);
+
+        provider.GapsResponseOverride = """
+            {
+              "ambiguities": [
+                { "target": "Musteri.MusteriNo", "kind": "PrimaryKey", "impact": "High",
+                  "description": "Müşteri numarası doğal anahtar mı?", "confidence": 0.3 }
+              ]
+            }
+            """;
+        provider.QuestionsResponseOverride = """
+            {
+              "questions": [
+                { "ambiguityId": "A2", "text": "Müşteri numarası doğal anahtar olarak mı kullanılmalı?",
+                  "reason": "Birincil anahtar seçimini belirler", "options": ["Evet", "Hayır"] }
+              ]
+            }
+            """;
+
+        var updated = await pipeline.RequestQuestionsAsync(context);
+
+        Assert.Equal(1, updated.NewQuestionCount);
+        var open = Assert.Single(updated.OpenQuestions);
+        Assert.Contains("doğal anahtar", open.Text);
+        Assert.Single(updated.AppliedQuestions);
+    }
+
+    [Fact]
+    public async Task Sorular_AyniSoruIkinciKezEklenmez()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        var package = await pipeline.GenerateAsync(context);
+
+        var alreadyAsked = package.Questions[0].Text;
+
+        // Model aynı soruyu farklı bir belirsizlik kimliğiyle tekrar önerse bile eklenmemeli.
+        provider.GapsResponseOverride = """
+            {
+              "ambiguities": [
+                { "target": "Baska Hedef", "kind": "Cardinality", "impact": "High",
+                  "description": "Aynı konu", "confidence": 0.3 }
+              ]
+            }
+            """;
+        provider.QuestionsResponseOverride = $$"""
+            {
+              "questions": [
+                { "ambiguityId": "A2", "text": "{{alreadyAsked}}", "reason": "tekrar", "options": [] }
+              ]
+            }
+            """;
+
+        var updated = await pipeline.RequestQuestionsAsync(context);
+
+        Assert.Equal(0, updated.NewQuestionCount);
+        Assert.Single(updated.Questions);
+    }
+
+    [Fact]
+    public async Task Sorular_YeniBelirsizlikYoksaKullaniciyaBildirilir()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        await pipeline.GenerateAsync(context);
+
+        provider.GapsResponseOverride = """{"ambiguities": []}""";
+
+        var updated = await pipeline.RequestQuestionsAsync(context);
+
+        Assert.Equal(0, updated.NewQuestionCount);
+        Assert.Contains(updated.NormalizationNotes, n => n.Contains("kararlı görünüyor"));
+    }
+
+    [Fact]
+    public async Task Sorular_ModelUretilmedenYeniSoruIstenemez()
+    {
+        var (pipeline, _) = Build();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            pipeline.RequestQuestionsAsync(new PipelineContext { Input = SampleInput() }));
     }
 }

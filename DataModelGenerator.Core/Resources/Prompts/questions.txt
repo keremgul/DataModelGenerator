@@ -8,12 +8,17 @@ MODEL:
 YÜKSEK ETKİLİ BELİRSİZLİKLER:
 {{AMBIGUITIES}}
 
+DAHA ÖNCE SORULMUŞ SORULAR (ve varsa cevapları):
+{{ASKED}}
+
 GÖREV:
+- Yukarıda sorulmuş sorulardan herhangi birini tekrar etme; aynı konuyu farklı kelimelerle de sorma. Cevabı alınmış bir noktayı yeniden sorma.
 - Her belirsizlik için tam olarak bir soru üret ve "ambiguityId" alanına ilgili belirsizliğin ID'sini yaz.
 - Soru, veri modelleme jargonu bilmeyen bir iş analistinin cevaplayabileceği sadelikte olmalı.
 - "reason" alanında bu sorunun neden sorulduğunu ve cevabın modeli nasıl değiştireceğini bir cümleyle açıkla.
 - Mümkünse 2-4 somut seçenek ver; seçenekler birbirini dışlayan, net ifadeler olsun.
 - Soruları tek soruda birleştirme; her belirsizlik ayrı sorulur.
+- Sorulacak yeni ve anlamlı bir nokta kalmadıysa boş liste döndür: {"questions": []}
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
 {

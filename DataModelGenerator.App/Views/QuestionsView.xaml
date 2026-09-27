@@ -112,6 +112,9 @@
                 <Button Content="← Geri" Command="{Binding BackCommand}"/>
                 <Button Content="Cevapları Uygula (kısmi güncelleme)" Command="{Binding ApplyAnswersCommand}"
                         Style="{StaticResource PrimaryButton}" IsEnabled="{Binding HasQuestions}"/>
+                <Button Content="Yeni Sorular Üret" Command="{Binding RequestQuestionsCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                        ToolTip="Modeli daha ileri götürmek için, daha önce sorulmamış yeni sorular üretir."/>
                 <Button Content="Reprompt'a Geç →" Command="{Binding NextCommand}"/>
             </StackPanel>
         </Border>

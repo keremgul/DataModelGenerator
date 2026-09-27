@@ -32,7 +32,31 @@ public class ModelPipeline
     {
         context.Model = new DataModel { Topic = context.Input.Topic };
         context.Scope.Clear();
-        return await RunAsync(context, PipelineStage.Extraction, progress, ct);
+        return await RunAsync(context, PipelineStage.Extraction, progress, ct, generateQuestions: true);
+    }
+
+    /// <summary>
+    /// Kullanıcının tetiklediği ek soru turu: belirsizlikler yeniden taranır ve
+    /// daha önce sorulmamış sorular üretilir. Otomatik çalışmaz — modeli daha ileri
+    /// götürmek isteyip istemediğine kullanıcı karar verir.
+    /// </summary>
+    public async Task<ModelPackage> RequestQuestionsAsync(PipelineContext context,
+        IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        if (context.Model.Entities.Count == 0)
+            throw new InvalidOperationException("Önce bir model üretilmelidir.");
+
+        var before = context.Questions.Count;
+
+        progress?.Report("Belirsizlikler yeniden taranıyor…");
+        await DetectGapsAsync(context, ct);
+
+        progress?.Report("Yeni sorular üretiliyor…");
+        await GenerateQuestionsAsync(context, ct);
+
+        var package = await SerializeAsync(context, progress, ct);
+        package.NewQuestionCount = context.Questions.Count - before;
+        return package;
     }
 
     /// <summary>
@@ -168,8 +192,12 @@ public class ModelPipeline
         return await RunAsync(context, PipelineStage.NormalizationCheck, progress, ct);
     }
 
+    /// <param name="generateQuestions">
+    /// Yalnızca ilk üretimde true. Sonraki turlarda soru üretimi kullanıcının
+    /// <see cref="RequestQuestionsAsync"/> çağrısına bırakılır.
+    /// </param>
     private async Task<ModelPackage> RunAsync(PipelineContext context, PipelineStage fromStage,
-        IProgress<string>? progress, CancellationToken ct)
+        IProgress<string>? progress, CancellationToken ct, bool generateQuestions = false)
     {
         context.RoundNumber++;
 
@@ -196,7 +224,7 @@ public class ModelPipeline
                     await DetectGapsAsync(context, ct);
                     break;
                 case PipelineStage.QuestionGeneration:
-                    await GenerateQuestionsAsync(context, ct);
+                    if (generateQuestions) await GenerateQuestionsAsync(context, ct);
                     break;
                 case PipelineStage.Serialization:
                     break;
@@ -454,29 +482,24 @@ public class ModelPipeline
     // ---------------------------------------------------------------- adım 6
     private async Task GenerateQuestionsAsync(PipelineContext context, CancellationToken ct)
     {
-        // Cevaplanmamış ama henüz uygulanmamış sorular korunur; uygulananlar geçmişte kalır.
-        context.Questions.RemoveAll(q => !q.IsApplied && !q.IsAnswered);
-
-        if (context.QuestionLimitReached)
-        {
-            context.NormalizationNotes.Add(
-                $"Soru turu sınırına ulaşıldı ({PipelineContext.MaxQuestionRounds} tur). " +
-                "Kalan belirsizlikler soru olarak sorulmuyor; belirsizlik listesinden takip edilebilir.");
-            return;
-        }
-
         var open = context.Ambiguities
             .Where(a => a.Impact == AmbiguityImpact.High && !a.IsResolved)
             .Where(a => context.Questions.All(q => q.AmbiguityId != a.Id))
             .ToList();
 
-        if (open.Count == 0) return;
+        if (open.Count == 0)
+        {
+            context.NormalizationNotes.Add(
+                "Sorulacak yeni bir yüksek etkili belirsizlik bulunamadı; model bu haliyle kararlı görünüyor.");
+            return;
+        }
 
         var prompt = _prompts.Render("questions", new Dictionary<string, string>
         {
             ["TOPIC"] = context.Input.Topic,
             ["MODEL"] = ModelJson.Serialize(context.Model),
-            ["AMBIGUITIES"] = FormatAmbiguities(open)
+            ["AMBIGUITIES"] = FormatAmbiguities(open),
+            ["ASKED"] = FormatAskedQuestions(context.Questions)
         });
 
         JsonNode response;
@@ -502,8 +525,9 @@ public class ModelPipeline
             var ambiguity = open.FirstOrDefault(a => a.Id == ambiguityId) ?? open.FirstOrDefault();
             if (ambiguity is null) continue;
 
-            // Aynı belirsizlik için ikinci bir soru üretilmez — döngü böyle sonlanır.
+            // Aynı belirsizlik veya aynı soru ikinci kez sorulmaz.
             if (context.Questions.Any(q => q.AmbiguityId == ambiguity.Id)) continue;
+            if (context.Questions.Any(q => IsSameQuestion(q.Text, text))) continue;
 
             context.Questions.Add(new ClarifyingQuestion
             {
@@ -518,7 +542,27 @@ public class ModelPipeline
             added++;
         }
 
-        if (added > 0) context.QuestionRounds++;
+        if (added > 0)
+            context.QuestionRounds++;
+        else
+            context.NormalizationNotes.Add(
+                "Üretilen sorular daha önce sorulanlarla aynıydı; yeni soru eklenmedi.");
+    }
+
+    /// <summary>Noktalama ve büyük/küçük harf farkları tekrarı gizlemesin.</summary>
+    private static bool IsSameQuestion(string first, string second) =>
+        string.Equals(Normalize(first), Normalize(second), StringComparison.OrdinalIgnoreCase);
+
+    private static string Normalize(string value) =>
+        new(NamingRules.FoldTurkish(value).Where(char.IsLetterOrDigit).ToArray());
+
+    private static string FormatAskedQuestions(IEnumerable<ClarifyingQuestion> questions)
+    {
+        var list = questions.ToList();
+        return list.Count == 0
+            ? "(henüz soru sorulmadı)"
+            : string.Join("\n", list.Select(q =>
+                $"- {q.Text}" + (q.IsApplied ? $" → CEVAP: {q.Answer}" : " (cevap bekliyor)")));
     }
 
     // ---------------------------------------------------------------- adım 7

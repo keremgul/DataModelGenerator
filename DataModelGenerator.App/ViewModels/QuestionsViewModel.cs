@@ -5,7 +5,6 @@ using DataModelGenerator.App.Dialogs;
 using DataModelGenerator.Core.Models;
 using DataModelGenerator.Core.Pipeline;
 using DataModelGenerator.Core.Services;
-using PipelineContext = DataModelGenerator.Core.Pipeline.PipelineContext;
 
 namespace DataModelGenerator.App.ViewModels;
 
@@ -55,15 +54,59 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
             AutoResolved.Add(ambiguity);
 
         HasQuestions = Questions.Count > 0;
-        RoundInfo = $"Soru turu {package.QuestionRoundsUsed}/{PipelineContext.MaxQuestionRounds}" +
+        RoundInfo = $"Soru turu {package.QuestionRoundsUsed}" +
                     (AppliedQuestions.Count > 0 ? $" · {AppliedQuestions.Count} soru uygulandı" : string.Empty);
 
-        ProgressText = HasQuestions
-            ? $"{Questions.Count} yüksek etkili belirsizlik için soru üretildi. " +
-              "Cevapladıklarınız kural listesine eklenir ve yalnızca etkilenen adımlar yeniden çalıştırılır."
-            : package.QuestionLimitReached
-                ? "Soru turu sınırına ulaşıldı; yeni soru üretilmiyor. Kalan noktalar Belirsizlikler sekmesinde listeleniyor."
-                : "Yüksek etkili belirsizlik kalmadı — soru–cevap döngüsü tamamlandı.";
+        if (string.IsNullOrWhiteSpace(ProgressText) || HasQuestions)
+        {
+            ProgressText = HasQuestions
+                ? $"{Questions.Count} açık soru var. Cevapladıklarınız kural listesine eklenir ve " +
+                  "yalnızca etkilenen adımlar yeniden çalıştırılır."
+                : "Açık soru kalmadı. Modeli daha ileri götürmek isterseniz yeni sorular üretebilirsiniz.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RequestQuestionsAsync()
+    {
+        if (_session.Context is null)
+        {
+            ProgressText = "Önce bir model üretmelisiniz.";
+            return;
+        }
+
+        IsBusy = true;
+        var progress = new Progress<string>(message => ProgressText = message);
+
+        try
+        {
+            var pipeline = _session.CreatePipeline();
+            var package = await pipeline.RequestQuestionsAsync(_session.Context, progress);
+
+            _session.Package = package;
+            Refresh();
+
+            ProgressText = package.NewQuestionCount > 0
+                ? $"{package.NewQuestionCount} yeni soru üretildi."
+                : "Yeni soru üretilemedi — sorulacak yeni bir yüksek etkili belirsizlik kalmadı.";
+            _main.SetStatus(ProgressText);
+        }
+        catch (PipelineException ex)
+        {
+            ProgressText = ex.Message;
+            ApiLogDialog.Show($"Soru üretimi hatası — {PipelineStageMap.DisplayName(ex.Stage)}",
+                string.IsNullOrWhiteSpace(ex.RawOutput) ? ex.Message : $"{ex.Message}\n\n{ex.RawOutput}",
+                ApiLogger.LastEntry);
+        }
+        catch (Exception ex)
+        {
+            ProgressText = $"Beklenmedik hata: {ex.Message}";
+            ApiLogDialog.Show("Soru Üretimi Başarısız", ex, ApiLogger.LastEntry);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]

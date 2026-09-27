@@ -24,7 +24,9 @@ public class ModelPackage
     public List<string> RepromptNotes { get; set; } = new();
 
     public int QuestionRoundsUsed { get; set; }
-    public bool QuestionLimitReached { get; set; }
+
+    /// <summary>Son "yeni soru üret" isteğinde kaç soru eklendiği.</summary>
+    public int NewQuestionCount { get; set; }
 
     public IEnumerable<ClarifyingQuestion> OpenQuestions => Questions.Where(q => !q.IsApplied);
     public IEnumerable<ClarifyingQuestion> AppliedQuestions => Questions.Where(q => q.IsApplied);
