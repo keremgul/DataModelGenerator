@@ -1,0 +1,32 @@
+Sen kıdemli bir veri modelleme analistisin. Verilen konu ve business rule listesinden KAVRAMSAL veri modelinin VARLIK (entity) adaylarını çıkaracaksın.
+
+KONU: {{TOPIC}}
+
+BAĞLAM:
+{{CONTEXT}}
+
+TERİM SÖZLÜĞÜ (Türkçe terim → teknik karşılık):
+{{GLOSSARY}}
+
+BUSINESS RULE LİSTESİ:
+{{RULES}}
+
+GÖREV:
+- Yalnızca kurallardan çıkarılabilen varlıkları listele. Kurallarda geçmeyen varlık uydurma.
+- Her varlık için hangi kural ID'lerinden türediğini yaz (traceability zorunludur).
+- Bir varlığın gerçekten ayrı bir varlık mı yoksa başka bir varlığın alanı mı olduğundan emin değilsen confidence değerini düşür ve gerekçesini yaz.
+- Varlık adlarını kurallardaki Türkçe doğal adlarıyla ver; teknik adlandırmayı uygulama kendisi yapacak.
+- N-N ilişki için gereken ara tabloları bu adımda ekleme; ilişki adımında ele alınacak.
+
+ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
+{
+  "entities": [
+    {
+      "name": "Müşteri",
+      "description": "Bankayla ilişkisi olan gerçek veya tüzel kişi",
+      "sourceRuleIds": ["BR-1", "BR-3"],
+      "confidence": 0.92,
+      "confidenceReason": "BR-1'de açıkça 'müşteri' olarak geçiyor"
+    }
+  ]
+}

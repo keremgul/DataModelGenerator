@@ -1,0 +1,28 @@
+Sen kıdemli bir veri modelleme analistisin. Yüksek etkili belirsizlikler için analiste soracağın HEDEFLİ SORULARI üreteceksin.
+
+KONU: {{TOPIC}}
+
+MODEL:
+{{MODEL}}
+
+YÜKSEK ETKİLİ BELİRSİZLİKLER:
+{{AMBIGUITIES}}
+
+GÖREV:
+- Her belirsizlik için tam olarak bir soru üret ve "ambiguityId" alanına ilgili belirsizliğin ID'sini yaz.
+- Soru, veri modelleme jargonu bilmeyen bir iş analistinin cevaplayabileceği sadelikte olmalı.
+- "reason" alanında bu sorunun neden sorulduğunu ve cevabın modeli nasıl değiştireceğini bir cümleyle açıkla.
+- Mümkünse 2-4 somut seçenek ver; seçenekler birbirini dışlayan, net ifadeler olsun.
+- Soruları tek soruda birleştirme; her belirsizlik ayrı sorulur.
+
+ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
+{
+  "questions": [
+    {
+      "ambiguityId": "A1",
+      "text": "Bir sipariş yalnızca tek bir müşteriye mi ait olur?",
+      "reason": "Cevap, Müşteri–Sipariş ilişkisinin 1-N mi yoksa N-N mi olacağını belirliyor",
+      "options": ["Evet, her sipariş tek müşteriye aittir", "Hayır, ortak siparişler olabilir"]
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+<UserControl x:Class="DataModelGenerator.App.Views.GenerationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:DataModelGenerator.App.Controls">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="24,16,24,8">
+            <TextBlock Text="Adım 3 — Model Üretimi" Style="{StaticResource StepHeader}" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Modeli Üret" Command="{Binding GenerateCommand}"
+                        Style="{StaticResource PrimaryButton}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"/>
+                <Button Content="İptal" Command="{Binding CancelCommand}"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBlock Text="{Binding RoundInfo}" VerticalAlignment="Center" Margin="16,0,0,0"
+                           Foreground="#666" FontSize="12"/>
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+            <TextBlock Text="{Binding ProgressText}" Style="{StaticResource InfoText}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <TabControl Grid.Row="1" Margin="24,0,24,0">
+
+            <TabItem Header="ER Diyagramı">
+                <ctrl:MermaidViewer MermaidCode="{Binding MermaidCode}"/>
+            </TabItem>
+
+            <TabItem Header="Özet">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" LineHeight="20"/>
+                        <TextBlock Text="Normalizasyon Notları" Style="{StaticResource SectionHeader}"
+                                   Visibility="{Binding NormalizationNotes, Converter={StaticResource CountToVisibility}}"/>
+                        <ItemsControl ItemsSource="{Binding NormalizationNotes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Foreground="#444"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Öneriler">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <ItemsControl ItemsSource="{Binding Suggestions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F3F7FF" BorderBrush="#C5D5F0" BorderThickness="1"
+                                        CornerRadius="3" Padding="10,8" Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="İzlenebilirlik">
+                <DataGrid ItemsSource="{Binding TraceRows}" AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="140"/>
+                        <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="160"/>
+                        <DataGridTextColumn Header="Tip" Binding="{Binding DataType}" Width="120"/>
+                        <DataGridTextColumn Header="Anahtar" Binding="{Binding Key}" Width="150"/>
+                        <DataGridTextColumn Header="Zorunlu" Binding="{Binding Required}" Width="70"/>
+                        <DataGridTextColumn Header="Kaynak Kural" Binding="{Binding SourceRules}" Width="120"/>
+                        <DataGridTextColumn Header="Güven" Binding="{Binding Confidence}" Width="60">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground"
+                                            Value="{Binding Confidence, Converter={StaticResource ConfidenceToBrush}}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Gerekçe" Binding="{Binding Reason}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="İlişkiler">
+                <DataGrid ItemsSource="{Binding Relationships}" AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Kaynak" Binding="{Binding FromEntity}" Width="150"/>
+                        <DataGridTextColumn Header="Hedef" Binding="{Binding ToEntity}" Width="150"/>
+                        <DataGridTextColumn Header="Kardinalite" Binding="{Binding Cardinality}" Width="110"/>
+                        <DataGridTextColumn Header="Ad" Binding="{Binding Name}" Width="120"/>
+                        <DataGridTextColumn Header="Kaynak Kural" Binding="{Binding SourceRuleIds[0]}" Width="110"/>
+                        <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Belirsizlikler">
+                <DataGrid ItemsSource="{Binding Ambiguities}" AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                        <DataGridTextColumn Header="Etki" Binding="{Binding Impact}" Width="60"/>
+                        <DataGridTextColumn Header="Tür" Binding="{Binding Kind}" Width="120"/>
+                        <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="180"/>
+                        <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*"/>
+                        <DataGridTextColumn Header="Uygulanan Varsayılan" Binding="{Binding AppliedDefault}" Width="160"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Doğrulama">
+                <DataGrid ItemsSource="{Binding ValidationIssues}" AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Seviye" Binding="{Binding Severity}" Width="80">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground"
+                                            Value="{Binding Severity, Converter={StaticResource SeverityToBrush}}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Kod" Binding="{Binding Code}" Width="200"/>
+                        <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="200"/>
+                        <DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Mermaid Kodu">
+                <TextBox Text="{Binding MermaidCode, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
+            </TabItem>
+
+            <TabItem Header="JSON">
+                <TextBox Text="{Binding ModelJson, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
+            </TabItem>
+
+            <TabItem Header="DDL">
+                <TextBox Text="{Binding Ddl, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="16,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="← Geri" Command="{Binding BackCommand}"/>
+                <Button Content="Sorulara Geç →" Command="{Binding NextCommand}"
+                        Style="{StaticResource PrimaryButton}" IsEnabled="{Binding HasModel}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

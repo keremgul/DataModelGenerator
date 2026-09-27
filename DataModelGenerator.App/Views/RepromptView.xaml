@@ -1,0 +1,68 @@
+<UserControl x:Class="DataModelGenerator.App.Views.RepromptView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:DataModelGenerator.App.Controls">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="380"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Row="0" Grid.Column="0" Margin="24,16,12,8">
+            <TextBlock DockPanel.Dock="Top" Text="Adım 5 — Serbest Reprompt" Style="{StaticResource StepHeader}" Margin="0,0,0,6"/>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding ProgressText}" Style="{StaticResource InfoText}" Margin="0,0,0,8"/>
+
+            <StackPanel DockPanel.Dock="Bottom">
+                <TextBlock Text="Değişiklik Talebi" Style="{StaticResource SectionHeader}"/>
+                <TextBox Text="{Binding Request, UpdateSourceTrigger=PropertyChanged}" Height="90"
+                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                         ToolTip="Örn: Sipariş varlığına indirim oranı alanı ekle ve tutar alanını DECIMAL(18,4) yap."/>
+                <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="Kapsam (değiştirilecek varlıklar)" Style="{StaticResource SectionHeader}"/>
+                <ListBox ItemsSource="{Binding Entities}" MinHeight="200">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3"
+                                      AutomationProperties.Name="{Binding Name}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#666"/>
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl Grid.Row="0" Grid.Column="1" Margin="12,16,24,8">
+            <TabItem Header="Güncel Diyagram">
+                <ctrl:MermaidViewer MermaidCode="{Binding MermaidCode}"/>
+            </TabItem>
+            <TabItem Header="Özet">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" LineHeight="20"/>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#F5F5F5" BorderBrush="#DDD"
+                BorderThickness="0,1,0,0" Padding="16,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="← Geri" Command="{Binding BackCommand}"/>
+                <Button Content="Değişikliği Uygula" Command="{Binding ApplyCommand}"
+                        Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Dışa Aktarmaya Geç →" Command="{Binding NextCommand}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

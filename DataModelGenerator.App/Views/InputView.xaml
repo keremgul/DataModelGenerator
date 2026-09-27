@@ -1,0 +1,114 @@
+<UserControl x:Class="DataModelGenerator.App.Views.InputView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="24,16">
+            <StackPanel>
+                <TextBlock Text="Adım 2 — Konu ve Business Rule Girdisi" Style="{StaticResource StepHeader}"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                        <TextBlock Text="Konu Adı" Style="{StaticResource SectionHeader}"/>
+                        <TextBox Text="{Binding Topic, UpdateSourceTrigger=PropertyChanged}" MaxWidth="520" HorizontalAlignment="Left" Width="520"/>
+
+                        <TextBlock Text="Kapsam / Bağlam (opsiyonel)" Style="{StaticResource SectionHeader}"/>
+                        <TextBox Text="{Binding Context, UpdateSourceTrigger=PropertyChanged}" Width="520" Height="60"
+                                 HorizontalAlignment="Left" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="12" VerticalAlignment="Top">
+                        <StackPanel>
+                            <TextBlock Text="Kural Setleri" Style="{StaticResource SectionHeader}" Margin="0,0,0,4"/>
+                            <ListBox ItemsSource="{Binding SavedRuleSets}" x:Name="RuleSetList" Height="90"/>
+                            <TextBox Text="{Binding RuleSetName, UpdateSourceTrigger=PropertyChanged}" Margin="0,6,0,0"
+                                     ToolTip="Kaydedilecek ad"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Button Content="Kaydet" Command="{Binding SaveRuleSetCommand}" MinWidth="60"/>
+                                <Button Content="Yükle" Command="{Binding LoadRuleSetCommand}"
+                                        CommandParameter="{Binding SelectedItem, ElementName=RuleSetList}" MinWidth="60"/>
+                                <Button Content="Sil" Command="{Binding DeleteRuleSetCommand}"
+                                        CommandParameter="{Binding SelectedItem, ElementName=RuleSetList}" MinWidth="50"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <TextBlock Text="Business Rule Listesi" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Her kuralın ID'si, çıktıdaki varlık ve alanların hangi kuraldan türediğini izlemek için kullanılır."/>
+
+                <DataGrid ItemsSource="{Binding Rules}" SelectedItem="{Binding SelectedRule}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" Height="220"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="90"/>
+                        <DataGridTextColumn Header="Kural" Binding="{Binding Text}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.EditingElementStyle>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="AcceptsReturn" Value="True"/>
+                                </Style>
+                            </DataGridTextColumn.EditingElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Kaynak" Binding="{Binding Origin}" Width="100" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="Kural Ekle" Command="{Binding AddRuleCommand}"/>
+                    <Button Content="Seçili Kuralı Sil" Command="{Binding RemoveRuleCommand}"/>
+                </StackPanel>
+
+                <TextBlock Text="Serbest Metin Yapıştır" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Yapıştırılan metin, sisteme verilmeden önce madde madde kural listesine ayrıştırılır (numaralı, tireli veya ID'li satırlar desteklenir)."/>
+                <TextBox Text="{Binding PastedText, UpdateSourceTrigger=PropertyChanged}" Height="90"
+                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                <Button Content="Metni Kurallara Ayrıştır" Command="{Binding ParsePastedCommand}"
+                        HorizontalAlignment="Left" Margin="0,6,0,0"/>
+
+                <TextBlock Text="Terim Sözlüğü (opsiyonel)" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Türkçe domain terimlerinin teknik karşılıkları — tutarlı adlandırma için kullanılır."/>
+                <DataGrid ItemsSource="{Binding Glossary}" SelectedItem="{Binding SelectedTerm}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" Height="120"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Terim" Binding="{Binding Term}" Width="*"/>
+                        <DataGridTextColumn Header="Teknik Karşılık" Binding="{Binding TechnicalName}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="Terim Ekle" Command="{Binding AddTermCommand}"/>
+                    <Button Content="Seçili Terimi Sil" Command="{Binding RemoveTermCommand}"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource InfoText}" Margin="0,10,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="16,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="← Geri" Command="{Binding BackCommand}"/>
+                <Button Content="Modeli Üret →" Command="{Binding NextCommand}" Style="{StaticResource PrimaryButton}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

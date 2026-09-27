@@ -1,0 +1,35 @@
+Sen kıdemli bir veri modelleme analistisin. Üretilen model için ÖZET ve ÖNERİ metinlerini yazacaksın.
+
+KONU: {{TOPIC}}
+
+BUSINESS RULE LİSTESİ:
+{{RULES}}
+
+MODEL:
+{{MODEL}}
+
+UYGULANAN VARSAYILANLAR VE BELİRSİZLİKLER:
+{{AMBIGUITIES}}
+
+NORMALİZASYON NOTLARI:
+{{NOTES}}
+
+GÖREV — ÖZET (summary):
+- Düz dilde, hangi varlığın hangi kural(lar)dan türediğini anlat.
+- Yapılan varsayımları ve normalize edilirken alınan kararları açıkça belirt.
+- Otomatik uygulanan düşük etkili varsayılanları tek tek not düş.
+- Madde işareti kullanabilirsin; en fazla 300 kelime.
+
+GÖREV — ÖNERİLER (suggestions):
+- Modele DAHİL EDİLMEMİŞ ama proaktif olarak dikkat çekilmesi gereken noktalar.
+- Örn. N-N ilişki için ara tablo ihtiyacı, audit alanları, indeks/tekillik önerileri, eksik kural alanları.
+- Her öneri tek cümlelik, uygulanabilir bir madde olsun.
+
+ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
+{
+  "summary": "Modelde 4 varlık üretildi. Müşteri varlığı BR-1 ve BR-3'ten türedi...",
+  "suggestions": [
+    "Sipariş ve Ürün arasındaki N-N ilişki için SiparisUrun ara tablosu eklenmeli",
+    "Standart pratik gereği tüm varlıklara OlusturmaTarihi/GuncellemeTarihi audit alanları önerilir"
+  ]
+}

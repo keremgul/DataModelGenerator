@@ -1,0 +1,73 @@
+<UserControl x:Class="DataModelGenerator.App.Views.ExportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="24,16">
+            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+
+                <TextBlock Text="Adım 6 — Dışa Aktarma" Style="{StaticResource StepHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Uygulama hiçbir veritabanına bağlanmaz; tüm çıktılar dosya bazlıdır."/>
+
+                <TextBlock Text="Mermaid ER Diyagramı" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Diyagramın Mermaid kodu düz metin dosyası olarak kaydedilir; başka bir dokümana yapıştırılabilir."/>
+                <Button Content="Mermaid Kodunu İndir (.mmd)" Command="{Binding ExportMermaidCommand}"
+                        HorizontalAlignment="Left" IsEnabled="{Binding HasModel}"/>
+
+                <TextBlock Text="Örnek Veri Simülasyonu" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Model kısıtlarına uygun sentetik veri üretilir — yabancı anahtarlar gerçekten var olan birincil anahtarlara referans verir. Her varlık ayrı bir Excel sekmesine yazılır."/>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBlock Text="Satır sayısı:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding RowCount, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                             ToolTip="Üst sınır yoktur; büyük değerler dosya boyutunu artırır."/>
+                    <Button Content="Excel Olarak İndir (.xlsx)" Command="{Binding ExportSampleDataCommand}"
+                            Margin="12,0,0,0" IsEnabled="{Binding HasModel}"/>
+                </StackPanel>
+
+                <TextBlock Text="Diğer Çıktılar" Style="{StaticResource SectionHeader}"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Model JSON (.json)" Command="{Binding ExportJsonCommand}" IsEnabled="{Binding HasModel}"/>
+                    <Button Content="DDL Betiği (.sql)" Command="{Binding ExportDdlCommand}" IsEnabled="{Binding HasModel}"/>
+                </StackPanel>
+
+                <TextBlock Text="Modeldeki Varlıklar" Style="{StaticResource SectionHeader}"/>
+                <ItemsControl ItemsSource="{Binding EntitySummaries}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Margin="0,2" Foreground="#444"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ProgressBar IsIndeterminate="True" Height="4" Margin="0,12,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,12,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#375623"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="#C00000"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="16,10">
+            <Button Content="← Geri" Command="{Binding BackCommand}" HorizontalAlignment="Left"/>
+        </Border>
+    </Grid>
+</UserControl>

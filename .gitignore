@@ -1,0 +1,29 @@
+# Build outputs
+bin/
+obj/
+publish/
+
+# Release zips
+*.zip
+
+# Visual Studio / Rider / PyCharm
+.vs/
+.idea/
+*.user
+*.suo
+
+# NuGet
+*.nupkg
+packages/
+
+# Python (PyCharm iskeleti)
+.venv/
+__pycache__/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+logs/

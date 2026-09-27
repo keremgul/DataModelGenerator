@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>DataModelGenerator</AssemblyName>
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+    <SatelliteResourceLanguages>tr;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DataModelGenerator.Core\DataModelGenerator.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Prompt'lar exe yanına da kopyalanır; kullanıcı düzenlerse gömülü sürümün yerine geçer. -->
+  <ItemGroup>
+    <Content Include="..\DataModelGenerator.Core\Resources\Prompts\*.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Link>Resources\Prompts\%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+  <!-- Mermaid kütüphanesi exe'nin içine gömülür; render internet bağlantısı olmadan çalışır. -->
+  <ItemGroup>
+    <None Remove="Resources\web\mermaid.min.js" />
+    <EmbeddedResource Include="Resources\web\mermaid.min.js" />
+  </ItemGroup>
+
+</Project>

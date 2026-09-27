@@ -1,0 +1,136 @@
+<UserControl x:Class="DataModelGenerator.App.Views.ConnectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Kayıtlı profiller -->
+        <Border Grid.Row="0" Grid.Column="0" BorderBrush="#DDD" BorderThickness="0,0,1,0" Padding="16">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Kayıtlı Profiller" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Yeni" Command="{Binding NewProfileCommand}" MinWidth="60"/>
+                    <Button Content="Sil" Command="{Binding DeleteProfileCommand}" MinWidth="60"/>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding ModelId}" FontSize="11" Foreground="#666"/>
+                                <TextBlock FontSize="11">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="test edilmedi"/>
+                                            <Setter Property="Foreground" Value="#999"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LastTestSucceeded}" Value="True">
+                                                    <Setter Property="Text" Value="✓ bağlantı doğrulandı"/>
+                                                    <Setter Property="Foreground" Value="#375623"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding LastTestSucceeded}" Value="False">
+                                                    <Setter Property="Text" Value="✗ bağlantı başarısız"/>
+                                                    <Setter Property="Foreground" Value="#C00000"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Profil düzenleme -->
+        <ScrollViewer Grid.Row="0" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="620" HorizontalAlignment="Left" Margin="24">
+
+                <TextBlock Text="Adım 1 — Bağlantı Yönetimi" Style="{StaticResource StepHeader}"/>
+                <TextBlock Style="{StaticResource InfoText}"
+                           Text="Bulut tabanlı sağlayıcılar ve offline/yerel modeller için profil tanımlayın. Profil, ancak bağlantı testi başarılı olduktan sonra kaydedilebilir."/>
+
+                <TextBlock Text="Profil Adı" Style="{StaticResource SectionHeader}"/>
+                <TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" Width="400" HorizontalAlignment="Left"/>
+
+                <TextBlock Text="Sağlayıcı Tipi" Style="{StaticResource SectionHeader}"/>
+                <ComboBox ItemsSource="{Binding Providers}" SelectedItem="{Binding SelectedProvider}"
+                          DisplayMemberPath="DisplayName" Width="400" HorizontalAlignment="Left"/>
+
+                <StackPanel Visibility="{Binding ShowBaseUrl, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Endpoint URL (zorunlu)" Style="{StaticResource SectionHeader}"/>
+                    <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" Width="400"
+                             HorizontalAlignment="Left"
+                             ToolTip="Özel endpoint için taban adres; /call_llm otomatik eklenir."/>
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding ShowDeployment, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Deployment Adı" Style="{StaticResource SectionHeader}"/>
+                    <TextBox Text="{Binding DeploymentName, UpdateSourceTrigger=PropertyChanged}" Width="400" HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <TextBlock Text="Model" Style="{StaticResource SectionHeader}"/>
+                <ComboBox ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}"
+                          DisplayMemberPath="DisplayName" Width="400" HorizontalAlignment="Left"
+                          Visibility="{Binding AvailableModels, Converter={StaticResource CountToVisibility}}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBox Text="{Binding ModelId, UpdateSourceTrigger=PropertyChanged}" Width="260"
+                             ToolTip="Listede olmayan bir model adını buraya yazabilirsiniz."/>
+                    <Button Content="Modelleri Listele" Command="{Binding LoadModelsCommand}" Margin="8,0,0,0"
+                            ToolTip="Sağlayıcıdan canlı model listesi çeker; API anahtarı gerektirir."/>
+                </StackPanel>
+                <TextBlock Style="{StaticResource InfoText}" FontSize="11"
+                           Text="Hazır listeden seçebilir veya model adını el ile yazabilirsiniz. Canlı listeleme isteğe bağlıdır ve API anahtarı ister."/>
+
+                <TextBlock Text="{Binding ApiKeyCaption}" Style="{StaticResource SectionHeader}"/>
+                <PasswordBox x:Name="KeyBox" Width="400" HorizontalAlignment="Left" PasswordChar="●"
+                             PasswordChanged="KeyBox_PasswordChanged"/>
+                <TextBlock Text="Anahtar düz metin olarak saklanmaz; Windows DPAPI ile şifrelenir."
+                           Style="{StaticResource InfoText}" FontSize="11"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="Bağlantıyı Test Et" Command="{Binding TestConnectionCommand}"
+                            Style="{StaticResource PrimaryButton}"/>
+                    <Button Content="Profili Kaydet" Command="{Binding SaveProfileCommand}"
+                            IsEnabled="{Binding CanSave}" Margin="8,0,0,0"/>
+                </StackPanel>
+
+                <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,6">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#375623"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="#C00000"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <TextBlock Text="{Binding SampleCompletion}" Style="{StaticResource InfoText}" FontSize="11"
+                           Visibility="{Binding SampleCompletion, Converter={StaticResource NullToCollapsed}}"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#F5F5F5" BorderBrush="#DDD"
+                BorderThickness="0,1,0,0" Padding="16,10">
+            <Button Content="Bu Profili Kullan ve Devam Et →" Command="{Binding UseProfileCommand}"
+                    IsEnabled="{Binding CanUse}" Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Left"/>
+        </Border>
+    </Grid>
+</UserControl>

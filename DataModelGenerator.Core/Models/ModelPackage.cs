@@ -1,0 +1,26 @@
+using DataModelGenerator.Core.Validation;
+
+namespace DataModelGenerator.Core.Models;
+
+/// <summary>
+/// Bir üretim turunun üç katmanlı çıktısı (model + özet + öneri) ile
+/// belirsizlik listesi ve doğrulama sonuçları.
+/// </summary>
+public class ModelPackage
+{
+    public int RoundNumber { get; set; } = 1;
+    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DataModel Model { get; set; } = new();
+    public string Summary { get; set; } = string.Empty;
+    public List<string> Suggestions { get; set; } = new();
+    public List<string> NormalizationNotes { get; set; } = new();
+    public List<Ambiguity> Ambiguities { get; set; } = new();
+    public List<ClarifyingQuestion> Questions { get; set; } = new();
+    public List<ValidationIssue> ValidationIssues { get; set; } = new();
+    public string MermaidCode { get; set; } = string.Empty;
+    public string ModelJson { get; set; } = string.Empty;
+    public string Ddl { get; set; } = string.Empty;
+
+    public IEnumerable<Ambiguity> HighImpactAmbiguities =>
+        Ambiguities.Where(a => a.Impact == AmbiguityImpact.High);
+}
