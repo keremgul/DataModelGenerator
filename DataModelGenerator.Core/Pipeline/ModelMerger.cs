@@ -51,6 +51,62 @@ public static class ModelMerger
     }
 
     /// <summary>
+    /// Verilen varlıkları modelden siler; onlara işaret eden ilişkileri ve yabancı
+    /// anahtar alanlarını da temizler. Reprompt'ta model bir varlığı geri döndürmediğinde
+    /// bu, o varlığın kaldırılması anlamına gelir.
+    /// </summary>
+    public static List<string> RemoveEntities(DataModel model, IEnumerable<string> technicalNames)
+    {
+        var removed = new List<string>();
+
+        foreach (var name in technicalNames)
+        {
+            var entity = model.FindEntity(name);
+            if (entity is null) continue;
+
+            model.Entities.Remove(entity);
+            removed.Add(entity.Name);
+
+            model.Relationships.RemoveAll(r =>
+                string.Equals(r.FromEntity, entity.TechnicalName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(r.ToEntity, entity.TechnicalName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var other in model.Entities)
+            {
+                other.Attributes.RemoveAll(a =>
+                    a.IsForeignKey &&
+                    string.Equals(a.ReferencesEntity, entity.TechnicalName, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Kapsam içindeki iki varlığı bağlayan eski ilişkileri, modelin döndürdüğü
+    /// yeni kümeyle değiştirir. Kapsam dışına uzanan ilişkilere dokunulmaz.
+    /// </summary>
+    public static void ReplaceScopedRelationships(DataModel model,
+        IReadOnlyCollection<string> scopedEntityNames, IReadOnlyList<Relationship> returned)
+    {
+        bool InScope(string entityName)
+        {
+            var resolved = model.FindEntity(entityName)?.TechnicalName ?? entityName;
+            return scopedEntityNames.Contains(resolved, StringComparer.OrdinalIgnoreCase);
+        }
+
+        bool ReturnedContains(Relationship existing) => returned.Any(r =>
+            SameEntity(model, r.FromEntity, existing.FromEntity) &&
+            SameEntity(model, r.ToEntity, existing.ToEntity));
+
+        model.Relationships.RemoveAll(existing =>
+            InScope(existing.FromEntity) && InScope(existing.ToEntity) && !ReturnedContains(existing));
+
+        foreach (var relationship in returned)
+            UpsertRelationship(model, relationship);
+    }
+
+    /// <summary>
     /// İlişkilerin gerektirdiği yabancı anahtarları ekler ve karşılığı olmayan
     /// yabancı anahtarlar için ilişki üretir. N-N ilişkiler için ara tablo
     /// otomatik oluşturulmaz — bu bir öneri olarak raporlanır.
@@ -86,8 +142,6 @@ public static class ModelMerger
             {
                 Name = name,
                 TechnicalName = name,
-                DataType = parentKey.DataType,
-                RawType = parentKey.DataType,
                 IsForeignKey = true,
                 ReferencesEntity = parent.TechnicalName,
                 ReferencesAttribute = parentKey.TechnicalName,

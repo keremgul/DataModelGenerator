@@ -66,14 +66,20 @@ public class ModelPipeline
                 ambiguity.AppliedDefault = question.Answer.Trim();
             }
 
+            var tracked = context.Questions.FirstOrDefault(q => q.Id == question.Id);
+            if (tracked is not null)
+            {
+                tracked.Answer = question.Answer;
+                tracked.IsApplied = true;
+                tracked.AppliedInRound = context.RoundNumber + 1;
+            }
+
             var stage = PipelineStageMap.AffectedStage(question.Kind);
             if (stage < affectedStage) affectedStage = stage;
 
             foreach (var entityName in EntityNamesFromTarget(context.Model, question.Target))
                 context.Scope.Add(entityName);
         }
-
-        context.Questions.RemoveAll(q => answeredQuestions.Any(a => a.Id == q.Id));
 
         // Kapsam yalnızca alan/tip kararlarını etkileyen adımlarda daraltılabilir;
         // varlık veya ilişki yeniden çıkarılıyorsa model bütün olarak değerlendirilmelidir.
@@ -121,6 +127,10 @@ public class ModelPipeline
             Text = $"[Reprompt: {string.Join(", ", context.Scope)}] {request.Trim()}"
         });
 
+        // Kapsamdaki hangi varlıkların geri döndüğü, hangilerinin silindiğini belirler.
+        var scopedBefore = scopedModel.Entities.Select(e => e.TechnicalName).ToList();
+        var returned = new List<string>();
+
         foreach (var node in response.Array("entities"))
         {
             var entity = ReadEntity(node, ruleId);
@@ -129,16 +139,29 @@ public class ModelPipeline
             entity.Attributes = ReadAttributes(node, ruleId);
             ModelMerger.UpsertEntity(context.Model, entity);
             context.Scope.Add(entity.Name);
+
+            var merged = context.Model.FindEntity(entity.Name);
+            if (merged is not null) returned.Add(merged.TechnicalName);
         }
 
-        foreach (var node in response.Array("relationships"))
-        {
-            var relationship = ReadRelationship(node, ruleId);
-            if (relationship is not null)
-                ModelMerger.UpsertRelationship(context.Model, relationship);
-        }
+        var removed = ModelMerger.RemoveEntities(context.Model,
+            scopedBefore.Where(name => !returned.Contains(name, StringComparer.OrdinalIgnoreCase)));
+
+        ModelMerger.ReplaceScopedRelationships(context.Model, scopedBefore,
+            response.Array("relationships")
+                .Select(node => ReadRelationship(node, ruleId))
+                .Where(r => r is not null)
+                .Select(r => r!)
+                .ToList());
+
+        context.RepromptNotes.Clear();
+        if (removed.Count > 0)
+            context.RepromptNotes.Add($"Modelden kaldırılan varlıklar: {string.Join(", ", removed)}");
 
         foreach (var note in response.StrList("notes"))
+            context.RepromptNotes.Add(note);
+
+        foreach (var note in context.RepromptNotes)
             context.NormalizationNotes.Add($"Reprompt notu: {note}");
 
         ApplyDeterministicLayer(context);
@@ -431,7 +454,16 @@ public class ModelPipeline
     // ---------------------------------------------------------------- adım 6
     private async Task GenerateQuestionsAsync(PipelineContext context, CancellationToken ct)
     {
-        context.Questions.RemoveAll(q => !q.IsAnswered);
+        // Cevaplanmamış ama henüz uygulanmamış sorular korunur; uygulananlar geçmişte kalır.
+        context.Questions.RemoveAll(q => !q.IsApplied && !q.IsAnswered);
+
+        if (context.QuestionLimitReached)
+        {
+            context.NormalizationNotes.Add(
+                $"Soru turu sınırına ulaşıldı ({PipelineContext.MaxQuestionRounds} tur). " +
+                "Kalan belirsizlikler soru olarak sorulmuyor; belirsizlik listesinden takip edilebilir.");
+            return;
+        }
 
         var open = context.Ambiguities
             .Where(a => a.Impact == AmbiguityImpact.High && !a.IsResolved)
@@ -459,6 +491,8 @@ public class ModelPipeline
         }
 
         var index = 1;
+        var added = 0;
+
         foreach (var node in response.Array("questions"))
         {
             var text = node.Str("text");
@@ -467,6 +501,9 @@ public class ModelPipeline
             var ambiguityId = node.Str("ambiguityId");
             var ambiguity = open.FirstOrDefault(a => a.Id == ambiguityId) ?? open.FirstOrDefault();
             if (ambiguity is null) continue;
+
+            // Aynı belirsizlik için ikinci bir soru üretilmez — döngü böyle sonlanır.
+            if (context.Questions.Any(q => q.AmbiguityId == ambiguity.Id)) continue;
 
             context.Questions.Add(new ClarifyingQuestion
             {
@@ -478,7 +515,10 @@ public class ModelPipeline
                 Reason = node.Str("reason"),
                 Options = node.StrList("options")
             });
+            added++;
         }
+
+        if (added > 0) context.QuestionRounds++;
     }
 
     // ---------------------------------------------------------------- adım 7
@@ -514,7 +554,6 @@ public class ModelPipeline
         var package = context.ToPackage();
         package.MermaidCode = MermaidSerializer.Serialize(context.Model);
         package.ModelJson = ModelJson.Serialize(context.Model);
-        package.Ddl = DdlSerializer.Serialize(context.Model);
         return package;
     }
 
@@ -620,7 +659,6 @@ public class ModelPipeline
             {
                 Name = name.Trim(),
                 TechnicalName = NamingRules.ToTechnicalName(name),
-                RawType = node.Str("type"),
                 IsPrimaryKey = node.Bool("primaryKey"),
                 IsForeignKey = isForeignKey,
                 ReferencesEntity = string.IsNullOrWhiteSpace(references) ? null : references.Trim(),

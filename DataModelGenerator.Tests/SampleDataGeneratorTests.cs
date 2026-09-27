@@ -80,10 +80,10 @@ public class SampleDataGeneratorTests
                     Name = "İşlem", TechnicalName = "Islem",
                     Attributes =
                     {
-                        new EntityAttribute { TechnicalName = "IslemId", Name = "İşlem Id", DataType = "BIGINT", IsPrimaryKey = true, IsRequired = true },
-                        new EntityAttribute { TechnicalName = "Tutar", Name = "Tutar", DataType = "DECIMAL(18,2)", IsRequired = true },
-                        new EntityAttribute { TechnicalName = "IslemTarihi", Name = "İşlem Tarihi", DataType = "DATE", IsRequired = true },
-                        new EntityAttribute { TechnicalName = "Aktif", Name = "Aktif", DataType = "BOOLEAN", IsRequired = true }
+                        new EntityAttribute { TechnicalName = "IslemId", Name = "İşlem Id", IsPrimaryKey = true, IsRequired = true },
+                        new EntityAttribute { TechnicalName = "Tutar", Name = "Tutar", IsRequired = true },
+                        new EntityAttribute { TechnicalName = "IslemTarihi", Name = "İşlem Tarihi", IsRequired = true },
+                        new EntityAttribute { TechnicalName = "Aktif", Name = "Aktif", IsRequired = true }
                     }
                 }
             }
@@ -106,7 +106,7 @@ public class SampleDataGeneratorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Son Sipariş", TechnicalName = "SonSiparisNo", DataType = "BIGINT",
+            Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
             IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
             IsRequired = false
         });

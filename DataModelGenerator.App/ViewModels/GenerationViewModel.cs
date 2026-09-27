@@ -13,7 +13,6 @@ public class TraceRow
 {
     public string Entity { get; init; } = string.Empty;
     public string Attribute { get; init; } = string.Empty;
-    public string DataType { get; init; } = string.Empty;
     public string Key { get; init; } = string.Empty;
     public string Required { get; init; } = string.Empty;
     public string SourceRules { get; init; } = string.Empty;
@@ -31,7 +30,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private string _mermaidCode = string.Empty;
     [ObservableProperty] private string _modelJson = string.Empty;
-    [ObservableProperty] private string _ddl = string.Empty;
     [ObservableProperty] private string _summary = string.Empty;
     [ObservableProperty] private string _roundInfo = string.Empty;
     [ObservableProperty] private bool _hasModel;
@@ -127,7 +125,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     {
         MermaidCode = package.MermaidCode;
         ModelJson = package.ModelJson;
-        Ddl = package.Ddl;
         Summary = package.Summary;
         HasModel = package.Model.Entities.Count > 0;
         RoundInfo = $"Tur {package.RoundNumber} · {package.GeneratedAt:dd.MM.yyyy HH:mm}";
@@ -158,7 +155,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
                 {
                     Entity = entity.Name,
                     Attribute = attribute.Name,
-                    DataType = attribute.DataType,
                     Key = attribute.IsPrimaryKey ? "PK"
                         : attribute.IsForeignKey ? $"FK → {attribute.ReferencesEntity}"
                         : string.Empty,

@@ -36,7 +36,8 @@ public static class MermaidSerializer
                 var keyPart = keys.Count > 0 ? " " + string.Join(",", keys) : string.Empty;
                 var comment = BuildComment(attribute);
 
-                sb.AppendLine($"        {SanitizeType(attribute.DataType)} {Sanitize(attribute.TechnicalName)}{keyPart}{comment}");
+                // Mermaid ER grameri iki jeton ister; tip yerine nötr bir sözcük yazılır.
+                sb.AppendLine($"        alan {Sanitize(attribute.TechnicalName)}{keyPart}{comment}");
             }
             sb.AppendLine("    }");
         }
@@ -66,20 +67,6 @@ public static class MermaidSerializer
             parts.Add($"→{attribute.ReferencesEntity}");
 
         return parts.Count == 0 ? string.Empty : $" \"{EscapeLabel(string.Join(" | ", parts))}\"";
-    }
-
-    /// <summary>Mermaid ER tip alanında parantez/virgül ayrıştırmayı bozar.</summary>
-    private static string SanitizeType(string dataType)
-    {
-        if (string.IsNullOrWhiteSpace(dataType)) return "VARCHAR";
-
-        var cleaned = dataType
-            .Replace("(", "_")
-            .Replace(")", string.Empty)
-            .Replace(",", "_")
-            .Replace(" ", "_");
-
-        return cleaned.TrimEnd('_');
     }
 
     private static string Sanitize(string name)

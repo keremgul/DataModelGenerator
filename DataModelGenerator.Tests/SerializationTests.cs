@@ -24,12 +24,14 @@ public class SerializationTests
     }
 
     [Fact]
-    public void Mermaid_ParantezliTipleriAyristirmayiBozmayacakSekildeTemizler()
+    public void Mermaid_VeriTipiYazmaz()
     {
         var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
 
-        Assert.Contains("DECIMAL_18_2 Tutar", mermaid);
-        Assert.DoesNotContain("DECIMAL(18,2)", mermaid);
+        Assert.Contains("alan Tutar", mermaid);
+        Assert.DoesNotContain("DECIMAL", mermaid);
+        Assert.DoesNotContain("VARCHAR", mermaid);
+        Assert.DoesNotContain("BIGINT", mermaid);
     }
 
     [Fact]
@@ -37,23 +39,9 @@ public class SerializationTests
     {
         var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
 
-        Assert.Contains("BIGINT MusteriNo PK", mermaid);
-        Assert.Contains("BIGINT MusteriNo FK", mermaid);
+        Assert.Contains("alan MusteriNo PK", mermaid);
+        Assert.Contains("alan MusteriNo FK", mermaid);
     }
-
-    [Fact]
-    public void Ddl_BirincilVeYabanciAnahtarKisitlariniUretir()
-    {
-        var ddl = DdlSerializer.Serialize(TestModels.CustomerOrder());
-
-        Assert.Contains("CREATE TABLE Musteri (", ddl);
-        Assert.Contains("CONSTRAINT PK_Siparis PRIMARY KEY (SiparisNo)", ddl);
-        Assert.Contains("FOREIGN KEY (MusteriNo) REFERENCES Musteri (MusteriNo)", ddl);
-    }
-
-    [Fact]
-    public void Ddl_ZorunluAlanlariNotNullYazar() =>
-        Assert.Contains("Tutar DECIMAL(18,2) NOT NULL", DdlSerializer.Serialize(TestModels.CustomerOrder()));
 
     [Fact]
     public void ModelJson_SerializeVeDeserializeAyniModeliKorur()

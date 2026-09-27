@@ -19,7 +19,15 @@ public class ModelPackage
     public List<ValidationIssue> ValidationIssues { get; set; } = new();
     public string MermaidCode { get; set; } = string.Empty;
     public string ModelJson { get; set; } = string.Empty;
-    public string Ddl { get; set; } = string.Empty;
+
+    /// <summary>Son reprompt turunda modelin bildirdiği notlar (kapsam dışı kalan işler vb.).</summary>
+    public List<string> RepromptNotes { get; set; } = new();
+
+    public int QuestionRoundsUsed { get; set; }
+    public bool QuestionLimitReached { get; set; }
+
+    public IEnumerable<ClarifyingQuestion> OpenQuestions => Questions.Where(q => !q.IsApplied);
+    public IEnumerable<ClarifyingQuestion> AppliedQuestions => Questions.Where(q => q.IsApplied);
 
     public IEnumerable<Ambiguity> HighImpactAmbiguities =>
         Ambiguities.Where(a => a.Impact == AmbiguityImpact.High);

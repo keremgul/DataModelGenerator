@@ -76,26 +76,6 @@ public class RuleEngine
             attribute.TechnicalName = NamingRules.MakeUnique(technical, usedNames);
             usedNames.Add(attribute.TechnicalName);
 
-            var declaredType = string.IsNullOrWhiteSpace(attribute.RawType)
-                ? attribute.DataType
-                : attribute.RawType;
-
-            attribute.DataType = TypeMapper.Map(attribute.Name, declaredType, attribute.IsPrimaryKey);
-
-            if (string.IsNullOrWhiteSpace(declaredType))
-            {
-                notes.Add(new Ambiguity
-                {
-                    Kind = AmbiguityKind.DataType,
-                    Impact = AmbiguityImpact.Low,
-                    Target = $"{entity.Name}.{attribute.Name}",
-                    Description = $"Veri tipi kurallarda belirtilmemiş; alan adından '{attribute.DataType}' olarak türetildi.",
-                    Confidence = 0.5,
-                    AppliedDefault = attribute.DataType,
-                    IsResolved = true
-                });
-            }
-
             if (attribute.IsPrimaryKey)
             {
                 attribute.IsRequired = true;
@@ -113,8 +93,6 @@ public class RuleEngine
         {
             Name = pkName,
             TechnicalName = pkName,
-            DataType = "BIGINT",
-            RawType = "BIGINT",
             IsPrimaryKey = true,
             IsRequired = true,
             IsUnique = true,
@@ -187,9 +165,6 @@ public class RuleEngine
                 {
                     attribute.ReferencesAttribute = referenced.TechnicalName;
                 }
-
-                // FK tipi hedef PK tipiyle hizalanır — tip uyuşmazlığı örnek veri üretimini bozar.
-                attribute.DataType = targetPk.DataType;
             }
         }
 

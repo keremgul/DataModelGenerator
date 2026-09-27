@@ -9,12 +9,14 @@ public enum Cardinality
     ManyToMany
 }
 
+/// <summary>
+/// Kavramsal modelde alan; veri tipi ve uzunluk taşımaz — bunlar fiziksel
+/// tasarımda, ihtiyaca göre belirlenir.
+/// </summary>
 public class EntityAttribute
 {
     public string Name { get; set; } = string.Empty;
     public string TechnicalName { get; set; } = string.Empty;
-    public string DataType { get; set; } = string.Empty;
-    public string RawType { get; set; } = string.Empty;
     public bool IsPrimaryKey { get; set; }
     public bool IsForeignKey { get; set; }
     public string? ReferencesEntity { get; set; }
@@ -29,8 +31,6 @@ public class EntityAttribute
     {
         Name = Name,
         TechnicalName = TechnicalName,
-        DataType = DataType,
-        RawType = RawType,
         IsPrimaryKey = IsPrimaryKey,
         IsForeignKey = IsForeignKey,
         ReferencesEntity = ReferencesEntity,

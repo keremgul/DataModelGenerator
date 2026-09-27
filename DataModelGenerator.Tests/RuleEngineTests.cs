@@ -19,7 +19,7 @@ public class RuleEngineTests
                 new ModelEntity
                 {
                     Name = "Sipariş Detayı",
-                    Attributes = { new EntityAttribute { Name = "Ürün Adı", RawType = "string" } }
+                    Attributes = { new EntityAttribute { Name = "Ürün Adı" } }
                 }
             }
         };
@@ -50,7 +50,7 @@ public class RuleEngineTests
     }
 
     [Fact]
-    public void Normalize_TipiBelirtilmemisAlaniDusukEtkiliBelirsizlikOlarakKaydeder()
+    public void Normalize_VeriTipiUretmez()
     {
         var model = new DataModel
         {
@@ -70,9 +70,7 @@ public class RuleEngineTests
 
         var notes = _engine.Normalize(model, new ProjectInput());
 
-        Assert.Equal("DATE", model.Entities[0].Attributes.Single(a => a.Name == "Doğum Tarihi").DataType);
-        Assert.Contains(notes, n => n.Kind == AmbiguityKind.DataType &&
-                                    n.Impact == AmbiguityImpact.Low && n.IsResolved);
+        Assert.DoesNotContain(notes, n => n.Kind == AmbiguityKind.DataType);
     }
 
     [Fact]
@@ -91,18 +89,6 @@ public class RuleEngineTests
 
         Assert.Equal("Musteri", model.Entities[0].TechnicalName);
         Assert.Equal("Musteri2", model.Entities[1].TechnicalName);
-    }
-
-    [Fact]
-    public void Normalize_YabanciAnahtarTipiniHedefAnahtarlaHizalar()
-    {
-        var model = TestModels.CustomerOrder();
-        model.Entities[1].Attributes[2].DataType = "VARCHAR(10)";
-        model.Entities[1].Attributes[2].RawType = "VARCHAR(10)";
-
-        _engine.Normalize(model, new ProjectInput());
-
-        Assert.Equal("BIGINT", model.Entities[1].Attributes[2].DataType);
     }
 
     [Fact]
@@ -129,7 +115,6 @@ public class RuleEngineTests
         Assert.NotNull(foreignKey);
         Assert.Equal("Musteri", foreignKey!.ReferencesEntity);
         Assert.Equal("MusteriNo", foreignKey.ReferencesAttribute);
-        Assert.Equal("BIGINT", foreignKey.DataType);
     }
 
     [Fact]

@@ -139,9 +139,16 @@ public class SampleDataGenerator
         return parentValues[_random.Next(parentValues.Count)];
     }
 
+    /// <summary>
+    /// Kavramsal model veri tipi taşımaz; sentetik değerin biçimi alan adından
+    /// yalnızca simülasyon için, geçici olarak çıkarılır.
+    /// </summary>
+    private static string InferType(EntityAttribute attribute) =>
+        TypeMapper.Map(attribute.Name, null, attribute.IsPrimaryKey);
+
     private object GenerateKeyValue(EntityAttribute key, int index)
     {
-        var type = key.DataType;
+        var type = InferType(key);
 
         if (TypeMapper.IsUuid(type)) return Guid.NewGuid().ToString();
         if (TypeMapper.IsNumeric(type)) return index + 1;
@@ -158,7 +165,7 @@ public class SampleDataGenerator
 
     private object? GenerateValue(EntityAttribute column, int rowIndex)
     {
-        var type = column.DataType;
+        var type = InferType(column);
         var name = NamingRules.FoldTurkish(column.Name).ToLowerInvariant();
 
         if (!column.IsRequired && _random.Next(10) == 0) return null;
@@ -183,7 +190,7 @@ public class SampleDataGenerator
 
     private string GenerateText(EntityAttribute column, string foldedName, int rowIndex)
     {
-        var length = TypeMapper.GetLength(column.DataType) ?? 100;
+        var length = TypeMapper.GetLength(InferType(column)) ?? 100;
 
         var value = foldedName switch
         {

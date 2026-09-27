@@ -56,11 +56,6 @@ public partial class ExportViewModel : ObservableObject, IRefreshable
             "JSON dosyası (*.json)|*.json", ".json");
 
     [RelayCommand]
-    private void ExportDdl() =>
-        SaveText(_session.Package?.Ddl, "DDL betiği",
-            "SQL dosyası (*.sql)|*.sql|Metin dosyası (*.txt)|*.txt", ".sql");
-
-    [RelayCommand]
     private async Task ExportSampleDataAsync()
     {
         var package = _session.Package;

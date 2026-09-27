@@ -26,10 +26,10 @@ public class ExcelExportService
                     column.IsPrimaryKey ? "#FCE4D6" : column.IsForeignKey ? "#DDEBF7" : "#D9E1F2");
                 cell.Style.Alignment.WrapText = true;
 
-                var keyNote = column.IsPrimaryKey ? " (PK)" : column.IsForeignKey
-                    ? $" (FK → {column.ReferencesEntity}.{column.ReferencesAttribute})"
+                var keyNote = column.IsPrimaryKey ? "\nBirincil anahtar" : column.IsForeignKey
+                    ? $"\nYabancı anahtar → {column.ReferencesEntity}.{column.ReferencesAttribute}"
                     : string.Empty;
-                cell.GetComment().AddText($"{column.Name}\n{column.DataType}{keyNote}");
+                cell.GetComment().AddText($"{column.Name}{keyNote}");
             }
 
             for (var r = 0; r < table.Rows.Count; r++)

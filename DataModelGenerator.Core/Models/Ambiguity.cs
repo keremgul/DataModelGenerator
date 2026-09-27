@@ -50,5 +50,10 @@ public class ClarifyingQuestion
     public List<string> Options { get; set; } = new();
     public string Answer { get; set; } = string.Empty;
 
+    /// <summary>Cevap modele uygulandıktan sonra true olur; soru geçmişte kalır, tekrar sorulmaz.</summary>
+    public bool IsApplied { get; set; }
+
+    public int AppliedInRound { get; set; }
+
     public bool IsAnswered => !string.IsNullOrWhiteSpace(Answer);
 }

@@ -28,7 +28,11 @@
 
             <StackPanel>
                 <TextBlock Text="Kapsam (değiştirilecek varlıklar)" Style="{StaticResource SectionHeader}"/>
-                <ListBox ItemsSource="{Binding Entities}" MinHeight="200">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <Button Content="Tümünü Seç" Command="{Binding SelectAllCommand}" MinWidth="90" Padding="8,4"/>
+                    <Button Content="Temizle" Command="{Binding ClearSelectionCommand}" MinWidth="70" Padding="8,4"/>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding Entities}" MinHeight="180">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3"
@@ -48,6 +52,26 @@
             <TabItem Header="Güncel Diyagram">
                 <ctrl:MermaidViewer MermaidCode="{Binding MermaidCode}"/>
             </TabItem>
+            <TabItem Header="Değişiklik Notları">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource InfoText}"
+                                   Text="Modelin son turda bildirdikleri. Kapsam dışında kalan bir değişiklik gerekiyorsa burada yazar — ilgili varlığı kapsama ekleyip talebi tekrarlayın."
+                                   Margin="0,0,0,8"/>
+                        <ItemsControl ItemsSource="{Binding Notes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#FFF8E1" BorderBrush="#E0C97F" BorderThickness="1"
+                                            CornerRadius="3" Padding="10,8" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#5F4B00"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="Özet">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
                     <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" LineHeight="20"/>

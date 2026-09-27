@@ -133,16 +133,6 @@ public class ModelValidator
                         Message = $"'{target.TechnicalName}.{referenced.TechnicalName}' birincil anahtar veya tekil değil; yabancı anahtar hedefi olamaz."
                     });
                 }
-                else if (!string.Equals(referenced.DataType, attribute.DataType, StringComparison.OrdinalIgnoreCase))
-                {
-                    issues.Add(new ValidationIssue
-                    {
-                        Severity = ValidationSeverity.Warning,
-                        Code = "FK_TYPE_MISMATCH",
-                        Target = $"{entity.TechnicalName}.{attribute.TechnicalName}",
-                        Message = $"Yabancı anahtar tipi ({attribute.DataType}) hedef anahtar tipinden ({referenced.DataType}) farklı."
-                    });
-                }
             }
         }
     }
@@ -172,17 +162,6 @@ public class ModelValidator
                         Code = "EMPTY_ATTRIBUTE_NAME",
                         Target = entity.TechnicalName,
                         Message = "Adı boş bir alan var."
-                    });
-                }
-
-                if (string.IsNullOrWhiteSpace(attribute.DataType))
-                {
-                    issues.Add(new ValidationIssue
-                    {
-                        Severity = ValidationSeverity.Error,
-                        Code = "MISSING_DATA_TYPE",
-                        Target = $"{entity.TechnicalName}.{attribute.TechnicalName}",
-                        Message = "Alanın veri tipi belirlenmemiş."
                     });
                 }
 

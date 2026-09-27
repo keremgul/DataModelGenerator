@@ -21,6 +21,9 @@ internal class FakeModelProvider : IModelProvider
     /// <summary>Alan adımının yanıtını test içinden değiştirebilmek için.</summary>
     public string AttributesResponse { get; set; } = DefaultAttributes;
     public string RelationshipsResponse { get; set; } = DefaultRelationships;
+    public string? RepromptResponseOverride { get; set; }
+    public string GapsResponseOverride { get; set; } = GapsResponse;
+    public string QuestionsResponseOverride { get; set; } = QuestionsResponse;
 
     public Task<List<ModelInfo>> ListModelsAsync(ProviderConnectionSettings settings, CancellationToken ct = default) =>
         Task.FromResult(new List<ModelInfo> { new("fake-model", "fake-model") });
@@ -37,7 +40,7 @@ internal class FakeModelProvider : IModelProvider
         if (systemPrompt.Contains("DEĞİŞTİRİLECEK KAPSAM"))
         {
             Stages.Add("reprompt");
-            return Task.FromResult(RepromptResponse);
+            return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
         if (systemPrompt.Contains("VARLIK (entity) adaylarını"))
         {
@@ -62,12 +65,12 @@ internal class FakeModelProvider : IModelProvider
         if (systemPrompt.Contains("BELİRSİZ noktaları"))
         {
             Stages.Add("gaps");
-            return Task.FromResult(GapsResponse);
+            return Task.FromResult(GapsResponseOverride);
         }
         if (systemPrompt.Contains("HEDEFLİ SORULARI"))
         {
             Stages.Add("questions");
-            return Task.FromResult(QuestionsResponse);
+            return Task.FromResult(QuestionsResponseOverride);
         }
         if (systemPrompt.Contains("ÖZET ve ÖNERİ"))
         {

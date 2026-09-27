@@ -33,10 +33,8 @@
                 </StackPanel>
 
                 <TextBlock Text="Diğer Çıktılar" Style="{StaticResource SectionHeader}"/>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Model JSON (.json)" Command="{Binding ExportJsonCommand}" IsEnabled="{Binding HasModel}"/>
-                    <Button Content="DDL Betiği (.sql)" Command="{Binding ExportDdlCommand}" IsEnabled="{Binding HasModel}"/>
-                </StackPanel>
+                <Button Content="Model JSON (.json)" Command="{Binding ExportJsonCommand}"
+                        HorizontalAlignment="Left" IsEnabled="{Binding HasModel}"/>
 
                 <TextBlock Text="Modeldeki Varlıklar" Style="{StaticResource SectionHeader}"/>
                 <ItemsControl ItemsSource="{Binding EntitySummaries}">

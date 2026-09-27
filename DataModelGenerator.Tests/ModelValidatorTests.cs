@@ -23,7 +23,7 @@ public class ModelValidatorTests
         {
             Name = "Musteri Kopya",
             TechnicalName = "Musteri",
-            Attributes = { new EntityAttribute { TechnicalName = "Id", DataType = "BIGINT", IsPrimaryKey = true, IsRequired = true } }
+            Attributes = { new EntityAttribute { TechnicalName = "Id", IsPrimaryKey = true, IsRequired = true } }
         });
 
         Assert.Contains(_validator.Validate(model), i => i.Code == "NAME_COLLISION_ENTITY");
@@ -35,7 +35,7 @@ public class ModelValidatorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Ad Soyad", TechnicalName = "AdSoyad", DataType = "VARCHAR(200)"
+            Name = "Ad Soyad", TechnicalName = "AdSoyad"
         });
 
         Assert.Contains(_validator.Validate(model), i => i.Code == "NAME_COLLISION_ATTRIBUTE");
@@ -73,7 +73,6 @@ public class ModelValidatorTests
     {
         var model = TestModels.CustomerOrder();
         model.Entities[1].Attributes[2].ReferencesAttribute = "AdSoyad";
-        model.Entities[1].Attributes[2].DataType = "VARCHAR(200)";
 
         Assert.Contains(_validator.Validate(model), i => i.Code == "FK_TARGET_NOT_KEY");
     }
@@ -84,7 +83,7 @@ public class ModelValidatorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Son Sipariş", TechnicalName = "SonSiparisNo", DataType = "BIGINT",
+            Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
             IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
             IsRequired = true
         });
@@ -99,7 +98,7 @@ public class ModelValidatorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Üst Müşteri", TechnicalName = "UstMusteriNo", DataType = "BIGINT",
+            Name = "Üst Müşteri", TechnicalName = "UstMusteriNo",
             IsForeignKey = true, ReferencesEntity = "Musteri", ReferencesAttribute = "MusteriNo",
             IsRequired = true
         });
@@ -114,7 +113,7 @@ public class ModelValidatorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Son Sipariş", TechnicalName = "SonSiparisNo", DataType = "BIGINT",
+            Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
             IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
             IsRequired = false
         });

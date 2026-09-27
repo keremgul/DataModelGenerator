@@ -27,6 +27,9 @@ public partial class RepromptViewModel : ObservableObject, IRefreshable
 
     public ObservableCollection<SelectableEntity> Entities { get; } = new();
 
+    /// <summary>Modelin son turda bildirdiği notlar — kapsam dışı kalan işler burada görünür.</summary>
+    public ObservableCollection<string> Notes { get; } = new();
+
     public RepromptViewModel(SessionState session, MainViewModel main)
     {
         _session = session;
@@ -58,8 +61,24 @@ public partial class RepromptViewModel : ObservableObject, IRefreshable
         MermaidCode = package.MermaidCode;
         Summary = package.Summary;
 
+        Notes.Clear();
+        foreach (var note in package.RepromptNotes) Notes.Add(note);
+
         if (string.IsNullOrWhiteSpace(ProgressText))
-            ProgressText = "Değiştirmek istediğiniz varlıkları seçin; yalnızca onların context'i modele gönderilir.";
+            ProgressText = "Değiştirmek istediğiniz varlıkları seçin; yalnızca onların context'i modele gönderilir. " +
+                           "Bir varlığın silinmesini istiyorsanız onu da kapsama ekleyin.";
+    }
+
+    [RelayCommand]
+    private void SelectAll()
+    {
+        foreach (var entity in Entities) entity.IsSelected = true;
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        foreach (var entity in Entities) entity.IsSelected = false;
     }
 
     [RelayCommand]

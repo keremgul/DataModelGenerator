@@ -16,12 +16,12 @@ internal static class TestModels
             {
                 new EntityAttribute
                 {
-                    Name = "Müşteri No", TechnicalName = "MusteriNo", DataType = "BIGINT",
+                    Name = "Müşteri No", TechnicalName = "MusteriNo",
                     IsPrimaryKey = true, IsRequired = true, IsUnique = true, SourceRuleIds = { "BR-1" }
                 },
                 new EntityAttribute
                 {
-                    Name = "Ad Soyad", TechnicalName = "AdSoyad", DataType = "VARCHAR(200)",
+                    Name = "Ad Soyad", TechnicalName = "AdSoyad",
                     IsRequired = true, SourceRuleIds = { "BR-1" }
                 }
             }
@@ -36,17 +36,17 @@ internal static class TestModels
             {
                 new EntityAttribute
                 {
-                    Name = "Sipariş No", TechnicalName = "SiparisNo", DataType = "BIGINT",
+                    Name = "Sipariş No", TechnicalName = "SiparisNo",
                     IsPrimaryKey = true, IsRequired = true, IsUnique = true, SourceRuleIds = { "BR-2" }
                 },
                 new EntityAttribute
                 {
-                    Name = "Tutar", TechnicalName = "Tutar", DataType = "DECIMAL(18,2)",
+                    Name = "Tutar", TechnicalName = "Tutar",
                     IsRequired = true, SourceRuleIds = { "BR-2" }
                 },
                 new EntityAttribute
                 {
-                    Name = "Müşteri No", TechnicalName = "MusteriNo", DataType = "BIGINT",
+                    Name = "Müşteri No", TechnicalName = "MusteriNo",
                     IsForeignKey = true, ReferencesEntity = "Musteri", ReferencesAttribute = "MusteriNo",
                     IsRequired = true, SourceRuleIds = { "BR-2" }
                 }

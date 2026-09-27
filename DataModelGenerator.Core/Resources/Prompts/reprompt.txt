@@ -14,10 +14,12 @@ KULLANICININ DEĞİŞİKLİK TALEBİ:
 {{REQUEST}}
 
 GÖREV:
-- Yalnızca kapsamdaki varlık/ilişkileri döndür. Kapsam dışındaki hiçbir varlığı çıktıya ekleme.
-- Talebi karşılamak için kapsam dışında bir değişiklik gerekiyorsa bunu uygulamak yerine "notes" altında belirt.
-- Varlığın tüm alanlarını döndür (yalnızca değişenleri değil); çıktı o varlığın yeni tam hali olarak kullanılacak.
-- Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür.
+- Kapsamda KALMASI gereken her varlığı, tüm alanlarıyla birlikte döndür (yalnızca değişenleri değil); çıktı o varlığın yeni tam hali olarak kullanılacak.
+- **Bir varlığın silinmesi gerekiyorsa onu çıktıya HİÇ EKLEME.** Kapsamda olup çıktıda yer almayan her varlık modelden kaldırılır. Neden kaldırıldığını "notes" altında yaz.
+- Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür; yeni varlık kapsam dışında olabilir.
+- "relationships" altında, kapsamdaki varlıklar arasında KALMASI gereken tüm ilişkileri döndür; listelemediğin kapsam içi ilişkiler silinir.
+- Kapsam dışındaki mevcut bir varlığın değişmesi gerekiyorsa onu çıktıya ekleme; "notes" altında hangi varlıkta ne değişmesi gerektiğini açıkça yaz.
+- Alanlar için veri tipi veya uzunluk verme; kavramsal modelde tip bilgisi tutulmaz.
 - Kaynak kural ID'lerini koru; kullanıcı talebinden gelen değişiklikler için ilgili cevap kuralının ID'sini kullan.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
@@ -30,7 +32,6 @@ GÖREV:
       "attributes": [
         {
           "name": "Sipariş No",
-          "type": "BIGINT",
           "primaryKey": true,
           "foreignKey": false,
           "references": null,

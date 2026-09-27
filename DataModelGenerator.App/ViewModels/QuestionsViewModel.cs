@@ -5,6 +5,7 @@ using DataModelGenerator.App.Dialogs;
 using DataModelGenerator.Core.Models;
 using DataModelGenerator.Core.Pipeline;
 using DataModelGenerator.Core.Services;
+using PipelineContext = DataModelGenerator.Core.Pipeline.PipelineContext;
 
 namespace DataModelGenerator.App.ViewModels;
 
@@ -16,8 +17,10 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private bool _hasQuestions;
+    [ObservableProperty] private string _roundInfo = string.Empty;
 
     public ObservableCollection<ClarifyingQuestion> Questions { get; } = new();
+    public ObservableCollection<ClarifyingQuestion> AppliedQuestions { get; } = new();
     public ObservableCollection<Ambiguity> AutoResolved { get; } = new();
 
     public QuestionsViewModel(SessionState session, MainViewModel main)
@@ -29,6 +32,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
     public void Refresh()
     {
         Questions.Clear();
+        AppliedQuestions.Clear();
         AutoResolved.Clear();
 
         var package = _session.Package;
@@ -36,21 +40,30 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
         {
             HasQuestions = false;
             ProgressText = "Önce bir model üretmelisiniz.";
+            RoundInfo = string.Empty;
             return;
         }
 
-        foreach (var question in package.Questions)
+        foreach (var question in package.OpenQuestions)
             Questions.Add(question);
+
+        foreach (var question in package.AppliedQuestions.OrderBy(q => q.AppliedInRound))
+            AppliedQuestions.Add(question);
 
         foreach (var ambiguity in package.Ambiguities.Where(a =>
                      a.Impact == AmbiguityImpact.Low && a.AppliedDefault is not null))
             AutoResolved.Add(ambiguity);
 
         HasQuestions = Questions.Count > 0;
+        RoundInfo = $"Soru turu {package.QuestionRoundsUsed}/{PipelineContext.MaxQuestionRounds}" +
+                    (AppliedQuestions.Count > 0 ? $" · {AppliedQuestions.Count} soru uygulandı" : string.Empty);
+
         ProgressText = HasQuestions
             ? $"{Questions.Count} yüksek etkili belirsizlik için soru üretildi. " +
               "Cevapladıklarınız kural listesine eklenir ve yalnızca etkilenen adımlar yeniden çalıştırılır."
-            : "Yüksek etkili belirsizlik kalmadı.";
+            : package.QuestionLimitReached
+                ? "Soru turu sınırına ulaşıldı; yeni soru üretilmiyor. Kalan noktalar Belirsizlikler sekmesinde listeleniyor."
+                : "Yüksek etkili belirsizlik kalmadı — soru–cevap döngüsü tamamlandı.";
     }
 
     [RelayCommand]

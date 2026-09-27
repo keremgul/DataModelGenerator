@@ -11,8 +11,9 @@ UYGULAMANIN ZATEN TESPİT ETTİĞİ BELİRSİZLİKLER (tekrarlama):
 
 GÖREV:
 - Kurallardan net biçimde çıkarılamayan her karar noktasını belirsizlik olarak yaz.
-- "kind" için şunlardan birini kullan: Cardinality, PrimaryKey, ForeignKey, EntityExistence, DataType, Requiredness, Naming, Other.
-- "impact" değeri: kardinalite, birincil/yabancı anahtar ve varlığın var olup olmaması YÜKSEK (High); adlandırma stili, veri tipi genişliği gibi konular DÜŞÜK (Low).
+- "kind" için şunlardan birini kullan: Cardinality, PrimaryKey, ForeignKey, EntityExistence, Requiredness, Naming, Other.
+- "impact" değeri: kardinalite, birincil/yabancı anahtar ve varlığın var olup olmaması YÜKSEK (High); adlandırma stili gibi konular DÜŞÜK (Low).
+- Veri tipi veya alan uzunluğu ile ilgili belirsizlik YAZMA; bu model tip bilgisi tutmaz.
 - "confidence" mevcut kararın ne kadar güvenilir olduğudur (0-1); düşük confidence = yüksek belirsizlik.
 - Emin olduğun, kurallarda açıkça yazan noktaları listeleme.
 

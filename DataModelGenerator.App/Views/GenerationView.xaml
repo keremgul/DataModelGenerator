@@ -67,10 +67,9 @@
                 <DataGrid ItemsSource="{Binding TraceRows}" AutoGenerateColumns="False" IsReadOnly="True"
                           GridLinesVisibility="Horizontal" HeadersVisibility="Column">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="140"/>
-                        <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="160"/>
-                        <DataGridTextColumn Header="Tip" Binding="{Binding DataType}" Width="120"/>
-                        <DataGridTextColumn Header="Anahtar" Binding="{Binding Key}" Width="150"/>
+                        <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="160"/>
+                        <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="200"/>
+                        <DataGridTextColumn Header="Anahtar" Binding="{Binding Key}" Width="170"/>
                         <DataGridTextColumn Header="Zorunlu" Binding="{Binding Required}" Width="70"/>
                         <DataGridTextColumn Header="Kaynak Kural" Binding="{Binding SourceRules}" Width="120"/>
                         <DataGridTextColumn Header="Güven" Binding="{Binding Confidence}" Width="60">
@@ -141,10 +140,6 @@
 
             <TabItem Header="JSON">
                 <TextBox Text="{Binding ModelJson, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
-            </TabItem>
-
-            <TabItem Header="DDL">
-                <TextBox Text="{Binding Ddl, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
             </TabItem>
         </TabControl>
 

@@ -48,7 +48,6 @@ public class ModelPipelineTests
         Assert.NotEmpty(package.Suggestions);
         Assert.NotEmpty(package.Ambiguities);
         Assert.StartsWith("erDiagram", package.MermaidCode);
-        Assert.Contains("CREATE TABLE", package.Ddl);
         Assert.Contains("\"entities\"", package.ModelJson);
     }
 
@@ -196,7 +195,6 @@ public class ModelPipelineTests
         var order = package.Model.FindEntity("Sipariş");
         Assert.NotNull(order);
         Assert.Contains(order!.Attributes, a => a.TechnicalName == "IndirimOrani");
-        Assert.Equal("DECIMAL(18,4)", order.Attributes.Single(a => a.TechnicalName == "Tutar").DataType);
 
         var customer = package.Model.FindEntity("Müşteri");
         Assert.NotNull(customer);
