@@ -65,13 +65,12 @@ public static class NamingRules
             : string.Join("_", words.Select(w => w.ToUpperInvariant()));
     }
 
-    /// <summary>Bir varlık adından varsayılan birincil anahtar alan adını türetir.</summary>
-    public static string DefaultPrimaryKeyName(string entityTechnicalName) =>
-        $"{entityTechnicalName}Id";
+    /// <summary>Her tablonun birincil anahtarı bu adı taşır.</summary>
+    public const string PrimaryKeyName = "ID";
 
-    /// <summary>Bir ilişkiden varsayılan yabancı anahtar alan adını türetir.</summary>
+    /// <summary>Yabancı anahtar, referans verdiği tablonun adı + "ID" şeklinde adlandırılır.</summary>
     public static string DefaultForeignKeyName(string referencedEntityTechnicalName) =>
-        $"{referencedEntityTechnicalName}Id";
+        $"{referencedEntityTechnicalName}ID";
 
     /// <summary>İki varlık arasındaki N-N ilişkisi için ara tablo adı.</summary>
     public static string JunctionTableName(string left, string right) =>

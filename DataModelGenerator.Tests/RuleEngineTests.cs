@@ -45,8 +45,45 @@ public class RuleEngineTests
         var entity = model.Entities[0];
 
         Assert.NotNull(entity.PrimaryKey);
-        Assert.Equal("MusteriId", entity.PrimaryKey!.TechnicalName);
-        Assert.Contains(notes, n => n.Kind == AmbiguityKind.PrimaryKey && n.Impact == AmbiguityImpact.High);
+        Assert.Equal("ID", entity.PrimaryKey!.TechnicalName);
+        Assert.True(entity.PrimaryKey.IsUnique);
+        Assert.True(entity.PrimaryKey.IsRequired);
+    }
+
+    [Fact]
+    public void Normalize_DogalAnahtariBirincilAnahtarYapmazTekilAlanaCevirir()
+    {
+        var model = new DataModel
+        {
+            Entities =
+            {
+                new ModelEntity
+                {
+                    Name = "Müşteri",
+                    Attributes = { new EntityAttribute { Name = "Müşteri No", IsPrimaryKey = true } }
+                }
+            }
+        };
+
+        _engine.Normalize(model, new ProjectInput());
+        var entity = model.Entities[0];
+
+        Assert.Equal("ID", entity.PrimaryKey!.TechnicalName);
+        var natural = entity.Attributes.Single(a => a.TechnicalName == "MusteriNo");
+        Assert.False(natural.IsPrimaryKey);
+        Assert.True(natural.IsUnique);
+    }
+
+    [Fact]
+    public void Normalize_YabanciAnahtariHedefTabloAdiArtiIDOlarakAdlandirir()
+    {
+        var model = TestModels.CustomerOrder();
+        model.Entities[1].Attributes[2].TechnicalName = "MusteriNumarasi";
+        model.Entities[1].Attributes[2].Name = "Müşteri Numarası";
+
+        _engine.Normalize(model, new ProjectInput());
+
+        Assert.Contains(model.Entities[1].Attributes, a => a.TechnicalName == "MusteriID" && a.IsForeignKey);
     }
 
     [Fact]
@@ -113,8 +150,9 @@ public class RuleEngineTests
 
         var foreignKey = model.Entities[1].Attributes.SingleOrDefault(a => a.IsForeignKey);
         Assert.NotNull(foreignKey);
-        Assert.Equal("Musteri", foreignKey!.ReferencesEntity);
-        Assert.Equal("MusteriNo", foreignKey.ReferencesAttribute);
+        Assert.Equal("MusteriID", foreignKey!.TechnicalName);
+        Assert.Equal("Musteri", foreignKey.ReferencesEntity);
+        Assert.Equal("ID", foreignKey.ReferencesAttribute);
     }
 
     [Fact]

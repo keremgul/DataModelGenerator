@@ -8,6 +8,12 @@ BUSINESS RULE LİSTESİ:
 MODEL:
 {{MODEL}}
 
+KULLANICININ SORULARA VERDİĞİ CEVAPLAR:
+{{ANSWERS}}
+
+DAHA ÖNCE SUNULMUŞ ÖNERİLER (tekrar etme):
+{{EXISTING_SUGGESTIONS}}
+
 UYGULANAN VARSAYILANLAR VE BELİRSİZLİKLER:
 {{AMBIGUITIES}}
 
@@ -22,8 +28,10 @@ GÖREV — ÖZET (summary):
 
 GÖREV — ÖNERİLER (suggestions):
 - Modele DAHİL EDİLMEMİŞ ama proaktif olarak dikkat çekilmesi gereken noktalar.
-- Örn. N-N ilişki için ara tablo ihtiyacı, audit alanları, indeks/tekillik önerileri, eksik kural alanları.
-- Her öneri tek cümlelik, uygulanabilir bir madde olsun.
+- **Kullanıcının cevaplarından doğan yeni öneriler üret.** Bir cevap yeni bir ihtiyaca işaret ediyorsa (ör. "adet bilgisi tutulmalı" cevabı ara tabloya adet alanı eklenmesini gerektirir) bunu öneri olarak yaz.
+- Yukarıda listelenen önerileri tekrar etme; aynı konuyu farklı kelimelerle de yazma.
+- Örn. audit alanları, indeks/tekillik önerileri, eksik kural alanları, cevaplardan doğan yeni alan/tablo ihtiyaçları.
+- Her öneri tek cümlelik, uygulanabilir bir madde olsun. Yeni öneri yoksa boş liste döndür.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
 {

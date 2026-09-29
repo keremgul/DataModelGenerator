@@ -16,6 +16,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private bool _hasQuestions;
+    [ObservableProperty] private bool _canApplyAnswers;
     [ObservableProperty] private string _roundInfo = string.Empty;
 
     public ObservableCollection<ClarifyingQuestion> Questions { get; } = new();
@@ -54,6 +55,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
             AutoResolved.Add(ambiguity);
 
         HasQuestions = Questions.Count > 0;
+        CanApplyAnswers = Questions.Count > 0 || AppliedQuestions.Count > 0;
         RoundInfo = $"Soru turu {package.QuestionRoundsUsed}" +
                     (AppliedQuestions.Count > 0 ? $" · {AppliedQuestions.Count} soru uygulandı" : string.Empty);
 
@@ -118,7 +120,8 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
             return;
         }
 
-        var answered = Questions.Where(q => q.IsAnswered).ToList();
+        // Düzenlenen eski cevaplar da gönderilir; model her zaman son cevaplara göre üretilir.
+        var answered = Questions.Concat(AppliedQuestions).Where(q => q.IsAnswered).ToList();
         if (answered.Count == 0)
         {
             ProgressText = "En az bir soruyu cevaplayın.";
@@ -135,7 +138,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
 
             _session.Package = package;
 
-            ProgressText = $"{answered.Count} cevap uygulandı — model kısmen güncellendi " +
+            ProgressText = $"{answered.Count} cevap uygulandı — model son cevaplara göre güncellendi " +
                            $"(tur {package.RoundNumber}).";
             _main.SetStatus(ProgressText);
 

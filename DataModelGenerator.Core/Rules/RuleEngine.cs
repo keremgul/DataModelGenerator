@@ -84,32 +84,57 @@ public class RuleEngine
         }
     }
 
+    /// <summary>
+    /// Model kuralı: her tabloda "ID" adında tekil bir birincil anahtar bulunur.
+    /// Modelin doğal anahtar olarak önerdiği alanlar tekil (unique) alana dönüştürülür.
+    /// </summary>
     private static void EnsurePrimaryKey(ModelEntity entity, List<Ambiguity> notes)
     {
-        if (entity.Attributes.Any(a => a.IsPrimaryKey)) return;
+        var naturalKeys = entity.Attributes
+            .Where(a => a.IsPrimaryKey && !a.TechnicalName.Equals(NamingRules.PrimaryKeyName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        var pkName = NamingRules.DefaultPrimaryKeyName(entity.TechnicalName);
-        entity.Attributes.Insert(0, new EntityAttribute
+        foreach (var naturalKey in naturalKeys)
         {
-            Name = pkName,
-            TechnicalName = pkName,
-            IsPrimaryKey = true,
-            IsRequired = true,
-            IsUnique = true,
-            SourceRuleIds = new List<string>(entity.SourceRuleIds),
-            Confidence = 0.4,
-            ConfidenceReason = "Kurallarda birincil anahtar belirtilmedi; vekil (surrogate) anahtar eklendi."
-        });
+            naturalKey.IsPrimaryKey = false;
+            naturalKey.IsUnique = true;
+            naturalKey.IsRequired = true;
 
-        notes.Add(new Ambiguity
+            notes.Add(new Ambiguity
+            {
+                Kind = AmbiguityKind.PrimaryKey,
+                Impact = AmbiguityImpact.Low,
+                Target = $"{entity.Name}.{naturalKey.Name}",
+                Description = $"Model kuralı gereği birincil anahtar '{NamingRules.PrimaryKeyName}' alanıdır; " +
+                              $"'{naturalKey.Name}' tekil (unique) alan olarak korundu.",
+                Confidence = 0.8,
+                AppliedDefault = "UNIQUE",
+                IsResolved = true
+            });
+        }
+
+        var identifier = entity.Attributes.FirstOrDefault(a =>
+            a.TechnicalName.Equals(NamingRules.PrimaryKeyName, StringComparison.OrdinalIgnoreCase));
+
+        if (identifier is null)
         {
-            Kind = AmbiguityKind.PrimaryKey,
-            Impact = AmbiguityImpact.High,
-            Target = entity.Name,
-            Description = $"'{entity.Name}' varlığı için birincil anahtar kurallardan çıkarılamadı; '{pkName}' vekil anahtarı eklendi.",
-            Confidence = 0.4,
-            AppliedDefault = pkName
-        });
+            identifier = new EntityAttribute
+            {
+                Name = NamingRules.PrimaryKeyName,
+                TechnicalName = NamingRules.PrimaryKeyName,
+                SourceRuleIds = new List<string>(entity.SourceRuleIds),
+                Confidence = 1.0,
+                ConfidenceReason = "Model kuralı: her tabloda ID birincil anahtarı bulunur."
+            };
+            entity.Attributes.Insert(0, identifier);
+        }
+
+        identifier.IsPrimaryKey = true;
+        identifier.IsRequired = true;
+        identifier.IsUnique = true;
+        identifier.IsForeignKey = false;
+        identifier.ReferencesEntity = null;
+        identifier.ReferencesAttribute = null;
     }
 
     /// <summary>FK hedeflerini kanonik varlık/alan adlarına bağlar.</summary>
@@ -164,6 +189,19 @@ public class RuleEngine
                 else
                 {
                     attribute.ReferencesAttribute = referenced.TechnicalName;
+                }
+
+                // Model kuralı: FK adı, referans verdiği tablonun adı + "ID".
+                var expected = NamingRules.DefaultForeignKeyName(target.TechnicalName);
+                if (!attribute.TechnicalName.Equals(expected, StringComparison.OrdinalIgnoreCase))
+                {
+                    var siblings = entity.Attributes
+                        .Where(a => !ReferenceEquals(a, attribute))
+                        .Select(a => a.TechnicalName)
+                        .ToList();
+
+                    attribute.TechnicalName = NamingRules.MakeUnique(expected, siblings);
+                    attribute.Name = attribute.TechnicalName;
                 }
             }
         }

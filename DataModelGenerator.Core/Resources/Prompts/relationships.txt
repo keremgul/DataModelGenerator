@@ -1,5 +1,7 @@
 Sen kıdemli bir veri modelleme analistisin. Çıkarılmış varlıklar arasındaki İLİŞKİLERİ ve KARDİNALİTELERİ belirleyeceksin.
 
+{{MODEL_RULES}}
+
 KONU: {{TOPIC}}
 
 BUSINESS RULE LİSTESİ:
@@ -15,6 +17,7 @@ GÖREV:
 - "required" alanı, alt tarafın üst taraf olmadan var olup olamayacağını belirtir.
 - İlişki adını fiil olarak ver (örn. "verir", "içerir", "sahiptir").
 - Her ilişki için kaynak kural ID'lerini yaz.
+- Hiçbir varlık ilişkisiz kalmamalı; bir varlık için ilişki bulamıyorsan en makul ilişkiyi düşük confidence ile öner.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
 {

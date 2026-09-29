@@ -39,8 +39,8 @@ public class SerializationTests
     {
         var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
 
-        Assert.Contains("alan MusteriNo PK", mermaid);
-        Assert.Contains("alan MusteriNo FK", mermaid);
+        Assert.Contains("alan ID PK", mermaid);
+        Assert.Contains("alan MusteriID FK", mermaid);
     }
 
     [Fact]

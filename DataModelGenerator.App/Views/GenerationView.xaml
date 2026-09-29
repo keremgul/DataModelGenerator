@@ -49,18 +49,49 @@
             </TabItem>
 
             <TabItem Header="Öneriler">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
-                    <ItemsControl ItemsSource="{Binding Suggestions}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#F3F7FF" BorderBrush="#C5D5F0" BorderThickness="1"
-                                        CornerRadius="3" Padding="10,8" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <DockPanel>
+                    <Border DockPanel.Dock="Bottom" Background="#F5F5F5" BorderBrush="#DDD"
+                            BorderThickness="0,1,0,0" Padding="12,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Önerileri Uygula" Command="{Binding ApplySuggestionsCommand}"
+                                    Style="{StaticResource PrimaryButton}" IsEnabled="{Binding HasSuggestions}"
+                                    ToolTip="Yalnızca 'Kabul' olarak işaretlenen öneriler modele uygulanır."/>
+                            <Button Content="Yeni Öneriler Üret" Command="{Binding RequestSuggestionsCommand}"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                                    ToolTip="Soru cevaplarını ve güncel modeli dikkate alarak yeni öneriler üretir."/>
+                            <TextBlock Text="Reddedilen öneriler modele yansıtılmaz ve tekrar önerilmez."
+                                       Style="{StaticResource InfoText}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                        <ItemsControl ItemsSource="{Binding Suggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F3F7FF" BorderBrush="#C5D5F0" BorderThickness="1"
+                                            CornerRadius="3" Padding="10,8" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding StatusText}" Foreground="#375623"
+                                                       FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0"
+                                                       Visibility="{Binding StatusText, Converter={StaticResource NullToCollapsed}}"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                                        Visibility="{Binding IsApplied, Converter={StaticResource InverseBoolToVisibility}}">
+                                                <CheckBox Content="Kabul" IsChecked="{Binding IsAccepted}" Margin="0,0,16,0"/>
+                                                <CheckBox Content="Reddet" IsChecked="{Binding IsRejected}"/>
+                                            </StackPanel>
+                                            <TextBox Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,6,0,0" TextWrapping="Wrap" AcceptsReturn="True"
+                                                     MinHeight="26"
+                                                     Visibility="{Binding IsApplied, Converter={StaticResource InverseBoolToVisibility}}"
+                                                     ToolTip="Açıklama/koşul ekleyebilirsiniz; kabul edilen öneriyle birlikte modele iletilir."/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
             </TabItem>
 
             <TabItem Header="İzlenebilirlik">

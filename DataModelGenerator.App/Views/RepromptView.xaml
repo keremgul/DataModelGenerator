@@ -21,13 +21,13 @@
                 <TextBlock Text="Değişiklik Talebi" Style="{StaticResource SectionHeader}"/>
                 <TextBox Text="{Binding Request, UpdateSourceTrigger=PropertyChanged}" Height="90"
                          AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                         ToolTip="Örn: Sipariş varlığına indirim oranı alanı ekle ve tutar alanını DECIMAL(18,4) yap."/>
+                         ToolTip="Örn: 'Tüm tablolara oluşturma tarihi alanı ekle' veya 'Adres bilgisini ayrı tabloya taşı'."/>
                 <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
                              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
 
             <StackPanel>
-                <TextBlock Text="Kapsam (değiştirilecek varlıklar)" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Text="Kapsam (opsiyonel — seçim yoksa tüm model)" Style="{StaticResource SectionHeader}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <Button Content="Tümünü Seç" Command="{Binding SelectAllCommand}" MinWidth="90" Padding="8,4"/>
                     <Button Content="Temizle" Command="{Binding ClearSelectionCommand}" MinWidth="70" Padding="8,4"/>

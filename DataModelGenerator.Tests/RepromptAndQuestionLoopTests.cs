@@ -25,21 +25,94 @@ public class RepromptAndQuestionLoopTests
     // ------------------------------------------------------------ reprompt
 
     [Fact]
-    public async Task Reprompt_DonmeyenKapsamVarligiModelden_Silinir()
+    public async Task Reprompt_AcikcaBildirilenVarligiSiler()
     {
         var (pipeline, provider) = Build();
         var context = new PipelineContext { Input = SampleInput() };
         await pipeline.GenerateAsync(context);
 
-        // Model "Sipariş"i döndürmüyor → silinmesi isteniyor demektir.
         provider.RepromptResponseOverride = """
-            { "entities": [], "relationships": [], "notes": ["Sipariş varlığı kaldırıldı"] }
+            {
+              "entities": [], "relationships": [],
+              "removedEntities": ["Sipariş"],
+              "notes": ["Sipariş varlığı kaldırıldı"]
+            }
             """;
 
         var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Sipariş varlığını kaldır.");
 
         Assert.Null(package.Model.FindEntity("Sipariş"));
         Assert.NotNull(package.Model.FindEntity("Müşteri"));
+    }
+
+    [Fact]
+    public async Task Reprompt_YanittaDonmeyenVarligiSilmez()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        var before = await pipeline.GenerateAsync(context);
+        var entityCount = before.Model.Entities.Count;
+
+        // Yalnızca değişen varlık dönüyor; diğerleri korunmalı.
+        provider.RepromptResponseOverride = """
+            { "entities": [], "relationships": [], "notes": [] }
+            """;
+
+        var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Küçük bir değişiklik yap.");
+
+        Assert.Equal(entityCount, package.Model.Entities.Count);
+        Assert.NotNull(package.Model.FindEntity("Sipariş"));
+    }
+
+    [Fact]
+    public async Task Reprompt_IliskileriKendiliginden_Silmez()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        var before = await pipeline.GenerateAsync(context);
+        var relationshipCount = before.Model.Relationships.Count;
+
+        provider.RepromptResponseOverride = """
+            {
+              "entities": [
+                {
+                  "name": "Sipariş", "sourceRuleIds": ["BR-2"],
+                  "attributes": [
+                    { "name": "Tutar", "required": true, "sourceRuleIds": ["BR-2"] }
+                  ]
+                }
+              ],
+              "relationships": [],
+              "notes": []
+            }
+            """;
+
+        var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Tutar alanını güncelle.");
+
+        Assert.Equal(relationshipCount, package.Model.Relationships.Count);
+    }
+
+    [Fact]
+    public async Task Reprompt_AcikcaBildirilenIliskiyiSiler()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        var before = await pipeline.GenerateAsync(context);
+        var target = before.Model.Relationships[0];
+
+        provider.RepromptResponseOverride = $$"""
+            {
+              "entities": [], "relationships": [],
+              "removedRelationships": [{ "from": "{{target.FromEntity}}", "to": "{{target.ToEntity}}" }],
+              "notes": []
+            }
+            """;
+
+        var package = await pipeline.RepromptAsync(context, [], "Bu ilişkiyi kaldır.");
+
+        Assert.DoesNotContain(package.Model.Relationships, r =>
+            r.FromEntity == target.FromEntity && r.ToEntity == target.ToEntity);
+        Assert.Contains(package.RepromptNotes, n => n.Contains("Kaldırılan ilişkiler"));
     }
 
     [Fact]
@@ -50,7 +123,11 @@ public class RepromptAndQuestionLoopTests
         await pipeline.GenerateAsync(context);
 
         provider.RepromptResponseOverride = """
-            { "entities": [], "relationships": [], "notes": [] }
+            {
+              "entities": [], "relationships": [],
+              "removedEntities": ["Müşteri"],
+              "notes": []
+            }
             """;
 
         var package = await pipeline.RepromptAsync(context, ["Müşteri"], "Müşteri varlığını kaldır.");
@@ -62,23 +139,6 @@ public class RepromptAndQuestionLoopTests
         var order = package.Model.FindEntity("Sipariş");
         Assert.NotNull(order);
         Assert.DoesNotContain(order!.Attributes, a => a.ReferencesEntity == "Musteri");
-    }
-
-    [Fact]
-    public async Task Reprompt_KapsamDisiVarligaDokunmaz()
-    {
-        var (pipeline, provider) = Build();
-        var context = new PipelineContext { Input = SampleInput() };
-        await pipeline.GenerateAsync(context);
-
-        provider.RepromptResponseOverride = """
-            { "entities": [], "relationships": [], "notes": [] }
-            """;
-
-        var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Sipariş varlığını kaldır.");
-
-        // Kapsamda olmayan Müşteri, yanıtta dönmese de silinmemeli.
-        Assert.NotNull(package.Model.FindEntity("Müşteri"));
     }
 
     [Fact]
@@ -99,7 +159,6 @@ public class RepromptAndQuestionLoopTests
         var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Kod alanı ekle.");
 
         Assert.Contains(package.RepromptNotes, n => n.Contains("KAPSAM DIŞI"));
-        Assert.Contains(package.RepromptNotes, n => n.Contains("kaldırılan varlıklar"));
     }
 
     [Fact]

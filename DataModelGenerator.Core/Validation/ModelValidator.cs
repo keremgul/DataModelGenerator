@@ -1,4 +1,5 @@
 using DataModelGenerator.Core.Models;
+using DataModelGenerator.Core.Rules;
 
 namespace DataModelGenerator.Core.Validation;
 
@@ -30,6 +31,7 @@ public class ModelValidator
 
         CheckNameCollisions(model, issues);
         CheckPrimaryKeys(model, issues);
+        CheckOrphanEntities(model, issues);
         CheckForeignKeys(model, issues);
         CheckRequiredFields(model, issues);
         CheckRelationships(model, issues);
@@ -76,14 +78,48 @@ public class ModelValidator
 
     private static void CheckPrimaryKeys(DataModel model, List<ValidationIssue> issues)
     {
-        foreach (var entity in model.Entities.Where(e => !e.Attributes.Any(a => a.IsPrimaryKey)))
+        foreach (var entity in model.Entities)
+        {
+            var primaryKeys = entity.PrimaryKeys.ToList();
+
+            if (primaryKeys.Count == 0)
+            {
+                issues.Add(new ValidationIssue
+                {
+                    Severity = ValidationSeverity.Error,
+                    Code = "MISSING_PK",
+                    Target = entity.TechnicalName,
+                    Message = $"'{entity.Name}' varlığının birincil anahtarı yok."
+                });
+                continue;
+            }
+
+            if (primaryKeys.Count > 1 ||
+                !primaryKeys[0].TechnicalName.Equals(NamingRules.PrimaryKeyName, StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add(new ValidationIssue
+                {
+                    Severity = ValidationSeverity.Error,
+                    Code = "PK_NOT_ID",
+                    Target = entity.TechnicalName,
+                    Message = $"Model kuralı gereği '{entity.Name}' tablosunun birincil anahtarı tek başına " +
+                              $"'{NamingRules.PrimaryKeyName}' alanı olmalıdır."
+                });
+            }
+        }
+    }
+
+    /// <summary>Model kuralı: hiçbir tablo ilişkisiz kalmamalı.</summary>
+    private static void CheckOrphanEntities(DataModel model, List<ValidationIssue> issues)
+    {
+        foreach (var orphan in ModelRules.FindUnrelatedEntities(model))
         {
             issues.Add(new ValidationIssue
             {
                 Severity = ValidationSeverity.Error,
-                Code = "MISSING_PK",
-                Target = entity.TechnicalName,
-                Message = $"'{entity.Name}' varlığının birincil anahtarı yok."
+                Code = "UNRELATED_ENTITY",
+                Target = orphan.TechnicalName,
+                Message = $"'{orphan.Name}' hiçbir tabloyla ilişkili değil; modelde ilişkisiz tablo bulunmamalı."
             });
         }
     }
@@ -220,10 +256,10 @@ public class ModelValidator
             {
                 issues.Add(new ValidationIssue
                 {
-                    Severity = ValidationSeverity.Warning,
+                    Severity = ValidationSeverity.Error,
                     Code = "MANY_TO_MANY_WITHOUT_JUNCTION",
                     Target = relationship.ToString(),
-                    Message = "N-N ilişki mantıksal modelde ara tablo (junction) gerektirir; model içinde karşılığı yok."
+                    Message = "Model kuralı gereği çoka-çok ilişki ara tabloyla kurulmalıdır; ara tablo bulunamadı."
                 });
             }
         }

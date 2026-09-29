@@ -65,8 +65,8 @@ public partial class RepromptViewModel : ObservableObject, IRefreshable
         foreach (var note in package.RepromptNotes) Notes.Add(note);
 
         if (string.IsNullOrWhiteSpace(ProgressText))
-            ProgressText = "Değiştirmek istediğiniz varlıkları seçin; yalnızca onların context'i modele gönderilir. " +
-                           "Bir varlığın silinmesini istiyorsanız onu da kapsama ekleyin.";
+            ProgressText = "Varlık seçimi opsiyonel: seçim yaparsanız talimat yalnızca o varlıklara, " +
+                           "yapmazsanız modelin tamamına uygulanır (ör. \"tüm tablolara oluşturma tarihi ekle\").";
     }
 
     [RelayCommand]
@@ -90,12 +90,8 @@ public partial class RepromptViewModel : ObservableObject, IRefreshable
             return;
         }
 
+        // Kapsam seçimi opsiyonel: seçim yoksa talimat modelin tamamına uygulanır.
         var scope = Entities.Where(e => e.IsSelected).Select(e => e.Name).ToList();
-        if (scope.Count == 0)
-        {
-            ProgressText = "En az bir varlık seçin.";
-            return;
-        }
 
         if (string.IsNullOrWhiteSpace(Request))
         {
@@ -115,7 +111,9 @@ public partial class RepromptViewModel : ObservableObject, IRefreshable
             MermaidCode = package.MermaidCode;
             Summary = package.Summary;
 
-            ProgressText = $"Değişiklik uygulandı — {string.Join(", ", scope)} güncellendi (tur {package.RoundNumber}).";
+            ProgressText = scope.Count > 0
+                ? $"Değişiklik uygulandı — {string.Join(", ", scope)} güncellendi (tur {package.RoundNumber})."
+                : $"Değişiklik modelin tamamına uygulandı (tur {package.RoundNumber}).";
             _main.SetStatus(ProgressText);
             Request = string.Empty;
 

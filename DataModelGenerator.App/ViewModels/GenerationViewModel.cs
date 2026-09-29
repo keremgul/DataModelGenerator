@@ -33,8 +33,9 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private string _summary = string.Empty;
     [ObservableProperty] private string _roundInfo = string.Empty;
     [ObservableProperty] private bool _hasModel;
+    [ObservableProperty] private bool _hasSuggestions;
 
-    public ObservableCollection<string> Suggestions { get; } = new();
+    public ObservableCollection<SuggestionItem> Suggestions { get; } = new();
     public ObservableCollection<string> NormalizationNotes { get; } = new();
     public ObservableCollection<Ambiguity> Ambiguities { get; } = new();
     public ObservableCollection<ValidationIssue> ValidationIssues { get; } = new();
@@ -113,6 +114,101 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     }
 
     [RelayCommand]
+    private async Task ApplySuggestionsAsync()
+    {
+        if (_session.Context is null)
+        {
+            ProgressText = "Önce bir model üretmelisiniz.";
+            return;
+        }
+
+        var decisions = Suggestions.Where(s => !s.IsApplied).Select(s => s.ToDecision()).ToList();
+        if (decisions.All(d => d.Decision != SuggestionDecision.Accepted))
+        {
+            ProgressText = "Uygulanacak öneri yok — en az bir öneriyi 'Kabul' olarak işaretleyin.";
+            return;
+        }
+
+        IsBusy = true;
+        var progress = new Progress<string>(message => ProgressText = message);
+
+        try
+        {
+            var pipeline = _session.CreatePipeline();
+            var package = await pipeline.ApplySuggestionsAsync(_session.Context, decisions, progress);
+
+            _session.Package = package;
+            Display(package);
+
+            var applied = decisions.Count(d => d.Decision == SuggestionDecision.Accepted);
+            var rejected = decisions.Count(d => d.Decision == SuggestionDecision.Rejected);
+            ProgressText = $"{applied} öneri modele uygulandı" +
+                           (rejected > 0 ? $", {rejected} öneri reddedildi" : string.Empty) +
+                           $" (tur {package.RoundNumber}).";
+            _main.SetStatus(ProgressText);
+        }
+        catch (PipelineException ex)
+        {
+            ProgressText = ex.Message;
+            ApiLogDialog.Show($"Öneri uygulama hatası — {PipelineStageMap.DisplayName(ex.Stage)}",
+                string.IsNullOrWhiteSpace(ex.RawOutput) ? ex.Message : $"{ex.Message}\n\n{ex.RawOutput}",
+                ApiLogger.LastEntry);
+        }
+        catch (Exception ex)
+        {
+            ProgressText = $"Beklenmedik hata: {ex.Message}";
+            ApiLogDialog.Show("Öneriler Uygulanamadı", ex, ApiLogger.LastEntry);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RequestSuggestionsAsync()
+    {
+        if (_session.Context is null)
+        {
+            ProgressText = "Önce bir model üretmelisiniz.";
+            return;
+        }
+
+        IsBusy = true;
+        var progress = new Progress<string>(message => ProgressText = message);
+
+        try
+        {
+            var pipeline = _session.CreatePipeline();
+            var package = await pipeline.RequestSuggestionsAsync(_session.Context, progress);
+
+            _session.Package = package;
+            Display(package);
+
+            ProgressText = package.NewSuggestionCount > 0
+                ? $"{package.NewSuggestionCount} yeni öneri üretildi."
+                : "Yeni öneri üretilemedi — cevaplardan doğan başka bir öneri kalmadı.";
+            _main.SetStatus(ProgressText);
+        }
+        catch (PipelineException ex)
+        {
+            ProgressText = ex.Message;
+            ApiLogDialog.Show($"Öneri üretimi hatası — {PipelineStageMap.DisplayName(ex.Stage)}",
+                string.IsNullOrWhiteSpace(ex.RawOutput) ? ex.Message : $"{ex.Message}\n\n{ex.RawOutput}",
+                ApiLogger.LastEntry);
+        }
+        catch (Exception ex)
+        {
+            ProgressText = $"Beklenmedik hata: {ex.Message}";
+            ApiLogDialog.Show("Öneri Üretimi Başarısız", ex, ApiLogger.LastEntry);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
     private void Cancel() => _cancellation?.Cancel();
 
     [RelayCommand]
@@ -130,7 +226,10 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
         RoundInfo = $"Tur {package.RoundNumber} · {package.GeneratedAt:dd.MM.yyyy HH:mm}";
 
         Suggestions.Clear();
-        foreach (var suggestion in package.Suggestions) Suggestions.Add(suggestion);
+        foreach (var suggestion in package.Suggestions)
+            Suggestions.Add(new SuggestionItem(suggestion));
+
+        HasSuggestions = Suggestions.Any(s => !s.IsApplied);
 
         NormalizationNotes.Clear();
         foreach (var note in package.NormalizationNotes) NormalizationNotes.Add(note);

@@ -1,4 +1,6 @@
-Sen kıdemli bir veri modelleme analistisin. Mevcut modelin YALNIZCA belirtilen parçasında bir değişiklik yapacaksın.
+Sen kıdemli bir veri modelleme analistisin. Mevcut model üzerinde, kullanıcının talebi doğrultusunda değişiklik yapacaksın.
+
+{{MODEL_RULES}}
 
 KONU: {{TOPIC}}
 
@@ -14,11 +16,12 @@ KULLANICININ DEĞİŞİKLİK TALEBİ:
 {{REQUEST}}
 
 GÖREV:
-- Kapsamda KALMASI gereken her varlığı, tüm alanlarıyla birlikte döndür (yalnızca değişenleri değil); çıktı o varlığın yeni tam hali olarak kullanılacak.
-- **Bir varlığın silinmesi gerekiyorsa onu çıktıya HİÇ EKLEME.** Kapsamda olup çıktıda yer almayan her varlık modelden kaldırılır. Neden kaldırıldığını "notes" altında yaz.
-- Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür; yeni varlık kapsam dışında olabilir.
-- "relationships" altında, kapsamdaki varlıklar arasında KALMASI gereken tüm ilişkileri döndür; listelemediğin kapsam içi ilişkiler silinir.
-- Kapsam dışındaki mevcut bir varlığın değişmesi gerekiyorsa onu çıktıya ekleme; "notes" altında hangi varlıkta ne değişmesi gerektiğini açıkça yaz.
+- **Yalnızca DEĞİŞEN varlıkları ve ilişkileri döndür.** Çıktıda yer almayan varlık ve ilişkiler olduğu gibi korunur — dokunmadığın hiçbir şey silinmez.
+- Değiştirdiğin bir varlığı tüm alanlarıyla döndür (yalnızca değişen alanları değil); çıktı o varlığın yeni tam hali olarak kullanılacak.
+- **Silmek istediğin varlıkları "removedEntities" listesine adlarıyla yaz.** Sadece çıktıdan çıkarmak silme anlamına GELMEZ.
+- **Silmek istediğin ilişkileri "removedRelationships" listesine {"from": "...", "to": "..."} olarak yaz.** İlişkiler başka türlü kaldırılmaz.
+- Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür.
+- KAPSAM belirli varlıkları listeliyorsa yalnızca onları değiştir; başka bir varlıkta değişiklik gerekiyorsa bunu "notes" altında yaz. KAPSAM "TÜM MODEL" ise talimatı ilgili tüm varlıklara uygula.
 - Alanlar için veri tipi veya uzunluk verme; kavramsal modelde tip bilgisi tutulmaz.
 - Kaynak kural ID'lerini koru; kullanıcı talebinden gelen değişiklikler için ilgili cevap kuralının ID'sini kullan.
 
@@ -58,5 +61,7 @@ GÖREV:
       "confidenceReason": "..."
     }
   ],
+  "removedEntities": ["Eski Varlık Adı"],
+  "removedRelationships": [{ "from": "Müşteri", "to": "Adres" }],
   "notes": ["Ürün varlığı kapsam dışında olduğu için değiştirilmedi"]
 }

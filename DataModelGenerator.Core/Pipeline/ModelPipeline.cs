@@ -75,13 +75,31 @@ public class ModelPipeline
 
         foreach (var question in answeredQuestions)
         {
-            var ruleId = context.Input.NextRuleId(RuleOrigin.Clarification);
-            context.Input.Rules.Add(new BusinessRule
+            var tracked = context.Questions.FirstOrDefault(q => q.Id == question.Id);
+            var ruleText = $"{question.Text} → {question.Answer.Trim()}";
+
+            // Cevap sonradan düzenlendiyse yeni kural eklenmez, mevcut kural güncellenir;
+            // böylece model her zaman son cevaba göre üretilir.
+            var existingRule = tracked?.InjectedRuleId is null
+                ? null
+                : context.Input.Rules.FirstOrDefault(r => r.Id == tracked.InjectedRuleId);
+
+            string ruleId;
+            if (existingRule is not null)
             {
-                Id = ruleId,
-                Origin = RuleOrigin.Clarification,
-                Text = $"{question.Text} → {question.Answer.Trim()}"
-            });
+                existingRule.Text = ruleText;
+                ruleId = existingRule.Id;
+            }
+            else
+            {
+                ruleId = context.Input.NextRuleId(RuleOrigin.Clarification);
+                context.Input.Rules.Add(new BusinessRule
+                {
+                    Id = ruleId,
+                    Origin = RuleOrigin.Clarification,
+                    Text = ruleText
+                });
+            }
 
             var ambiguity = context.Ambiguities.FirstOrDefault(a => a.Id == question.AmbiguityId);
             if (ambiguity is not null)
@@ -90,12 +108,12 @@ public class ModelPipeline
                 ambiguity.AppliedDefault = question.Answer.Trim();
             }
 
-            var tracked = context.Questions.FirstOrDefault(q => q.Id == question.Id);
             if (tracked is not null)
             {
                 tracked.Answer = question.Answer;
                 tracked.IsApplied = true;
                 tracked.AppliedInRound = context.RoundNumber + 1;
+                tracked.InjectedRuleId = ruleId;
             }
 
             var stage = PipelineStageMap.AffectedStage(question.Kind);
@@ -123,20 +141,26 @@ public class ModelPipeline
     {
         if (string.IsNullOrWhiteSpace(request))
             throw new InvalidOperationException("Değişiklik talebi boş olamaz.");
-        if (scopeEntities.Count == 0)
-            throw new InvalidOperationException("En az bir varlık seçilmelidir.");
+        if (context.Model.Entities.Count == 0)
+            throw new InvalidOperationException("Önce bir model üretilmelidir.");
 
         context.Scope.Clear();
         foreach (var name in scopeEntities) context.Scope.Add(name);
 
-        progress?.Report("Seçili varlıklar için değişiklik isteniyor…");
+        // Kapsam seçimi opsiyoneldir: seçim yoksa talimat modelin tamamına uygulanır.
+        var isScoped = context.Scope.Count > 0;
+        progress?.Report(isScoped
+            ? "Seçili varlıklar için değişiklik isteniyor…"
+            : "Değişiklik modelin tamamı için isteniyor…");
 
-        var scopedModel = BuildScopedModel(context.Model, context.Scope);
+        var scopedModel = isScoped ? BuildScopedModel(context.Model, context.Scope) : context.Model;
         var prompt = _prompts.Render("reprompt", new Dictionary<string, string>
         {
             ["TOPIC"] = context.Input.Topic,
             ["RULES"] = FormatRules(context.Input),
-            ["SCOPE"] = string.Join(", ", context.Scope),
+            ["SCOPE"] = isScoped
+                ? string.Join(", ", context.Scope)
+                : "TÜM MODEL (varlık seçilmedi — talimatı modelin tamamına uygula)",
             ["MODEL"] = ModelJson.Serialize(scopedModel),
             ["REQUEST"] = request
         });
@@ -151,10 +175,6 @@ public class ModelPipeline
             Text = $"[Reprompt: {string.Join(", ", context.Scope)}] {request.Trim()}"
         });
 
-        // Kapsamdaki hangi varlıkların geri döndüğü, hangilerinin silindiğini belirler.
-        var scopedBefore = scopedModel.Entities.Select(e => e.TechnicalName).ToList();
-        var returned = new List<string>();
-
         foreach (var node in response.Array("entities"))
         {
             var entity = ReadEntity(node, ruleId);
@@ -163,24 +183,30 @@ public class ModelPipeline
             entity.Attributes = ReadAttributes(node, ruleId);
             ModelMerger.UpsertEntity(context.Model, entity);
             context.Scope.Add(entity.Name);
-
-            var merged = context.Model.FindEntity(entity.Name);
-            if (merged is not null) returned.Add(merged.TechnicalName);
         }
 
-        var removed = ModelMerger.RemoveEntities(context.Model,
-            scopedBefore.Where(name => !returned.Contains(name, StringComparer.OrdinalIgnoreCase)));
+        // İlişkiler yalnızca modelin açıkça bildirdiği durumda silinir; dönmeyen
+        // ilişkiler korunur — aksi halde her reprompt ilişkileri eritirdi.
+        foreach (var node in response.Array("relationships"))
+        {
+            var relationship = ReadRelationship(node, ruleId);
+            if (relationship is not null)
+                ModelMerger.UpsertRelationship(context.Model, relationship);
+        }
 
-        ModelMerger.ReplaceScopedRelationships(context.Model, scopedBefore,
-            response.Array("relationships")
-                .Select(node => ReadRelationship(node, ruleId))
-                .Where(r => r is not null)
-                .Select(r => r!)
+        var removedRelationships = ModelMerger.RemoveRelationships(context.Model,
+            response.Array("removedRelationships")
+                .Select(node => (From: node.Str("from"), To: node.Str("to")))
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.From) && !string.IsNullOrWhiteSpace(pair.To))
                 .ToList());
+
+        var removed = ModelMerger.RemoveEntities(context.Model, response.StrList("removedEntities"));
 
         context.RepromptNotes.Clear();
         if (removed.Count > 0)
             context.RepromptNotes.Add($"Modelden kaldırılan varlıklar: {string.Join(", ", removed)}");
+        if (removedRelationships.Count > 0)
+            context.RepromptNotes.Add($"Kaldırılan ilişkiler: {string.Join(", ", removedRelationships)}");
 
         foreach (var note in response.StrList("notes"))
             context.RepromptNotes.Add(note);
@@ -190,6 +216,70 @@ public class ModelPipeline
 
         ApplyDeterministicLayer(context);
         return await RunAsync(context, PipelineStage.NormalizationCheck, progress, ct);
+    }
+
+    /// <summary>
+    /// Kullanıcının tetiklediği öneri turu: mevcut model ve soru cevapları üzerinden
+    /// daha önce sunulmamış yeni öneriler üretilir.
+    /// </summary>
+    public async Task<ModelPackage> RequestSuggestionsAsync(PipelineContext context,
+        IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        if (context.Model.Entities.Count == 0)
+            throw new InvalidOperationException("Önce bir model üretilmelidir.");
+
+        // Bekleyen öneriler her turda tazelendiği için sayı farkı değil, metin karşılaştırması yapılır.
+        var known = context.Suggestions.Select(s => Normalize(s.Text)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        progress?.Report("Cevaplara göre yeni öneriler üretiliyor…");
+        var package = await SerializeAsync(context, progress, ct);
+
+        package.NewSuggestionCount = context.Suggestions.Count(s => !known.Contains(Normalize(s.Text)));
+        return package;
+    }
+
+    /// <summary>
+    /// Kullanıcının kabul ettiği öneriler modele uygulanır. Reddedilenler modele
+    /// yansıtılmaz; kullanıcının eklediği açıklamalar talimatın parçası olur.
+    /// </summary>
+    public async Task<ModelPackage> ApplySuggestionsAsync(PipelineContext context,
+        IReadOnlyList<Suggestion> decisions,
+        IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        foreach (var decision in decisions)
+        {
+            var tracked = context.Suggestions.FirstOrDefault(s => s.Id == decision.Id);
+            if (tracked is null) continue;
+
+            tracked.Decision = decision.Decision;
+            tracked.Note = decision.Note;
+        }
+
+        var accepted = context.Suggestions
+            .Where(s => s.Decision == SuggestionDecision.Accepted && !s.IsApplied)
+            .ToList();
+
+        if (accepted.Count == 0)
+            throw new InvalidOperationException("Uygulanacak kabul edilmiş öneri yok.");
+
+        var request = new StringBuilder("Aşağıdaki önerileri modele uygula:");
+        foreach (var suggestion in accepted)
+        {
+            request.AppendLine();
+            request.Append($"- {suggestion.Text}");
+            if (!string.IsNullOrWhiteSpace(suggestion.Note))
+                request.Append($" (kullanıcı açıklaması: {suggestion.Note.Trim()})");
+        }
+
+        // Uygulandı işareti tur başlamadan konur; aksi halde özet adımı öneriyi listeden düşürür.
+        foreach (var suggestion in accepted) suggestion.IsApplied = true;
+
+        var package = await RepromptAsync(context, [], request.ToString(), progress, ct);
+
+        foreach (var suggestion in accepted) suggestion.AppliedInRound = context.RoundNumber;
+
+        package.Suggestions = new List<Suggestion>(context.Suggestions);
+        return package;
     }
 
     /// <param name="generateQuestions">
@@ -348,6 +438,16 @@ public class ModelPipeline
         context.Ambiguities.RemoveAll(a => a.FromRuleEngine && !a.IsResolved);
 
         var notes = _ruleEngine.Normalize(context.Model, context.Input);
+
+        // Model kuralı: çoka-çok ilişkiler ara tabloya çevrilir, sonra FK'ler kurulur.
+        var junctions = ModelMerger.CreateJunctionTables(context.Model);
+        if (junctions.Count > 0)
+        {
+            notes.AddRange(_ruleEngine.Normalize(context.Model, context.Input));
+            context.NormalizationNotes.Add(
+                $"Çoka-çok ilişkiler için ara tablo eklendi: {string.Join(", ", junctions)}.");
+        }
+
         ModelMerger.SyncForeignKeys(context.Model);
         notes.AddRange(_ruleEngine.RelinkReferences(context.Model));
 
@@ -556,6 +656,29 @@ public class ModelPipeline
     private static string Normalize(string value) =>
         new(NamingRules.FoldTurkish(value).Where(char.IsLetterOrDigit).ToArray());
 
+    /// <summary>Öneri üretimi, kullanıcının cevaplarını görerek yapılır.</summary>
+    private static string FormatAnswers(IEnumerable<ClarifyingQuestion> questions)
+    {
+        var answered = questions.Where(q => q.IsAnswered).ToList();
+        return answered.Count == 0
+            ? "(henüz cevaplanmış soru yok)"
+            : string.Join("\n", answered.Select(q => $"- SORU: {q.Text}\n  CEVAP: {q.Answer.Trim()}"));
+    }
+
+    private static string FormatSuggestions(IEnumerable<Suggestion> suggestions)
+    {
+        var list = suggestions.ToList();
+        return list.Count == 0
+            ? "(henüz öneri sunulmadı)"
+            : string.Join("\n", list.Select(s =>
+                $"- {s.Text}" + s.Decision switch
+                {
+                    SuggestionDecision.Accepted => " (kullanıcı kabul etti)",
+                    SuggestionDecision.Rejected => " (kullanıcı REDDETTİ — tekrar önerme)",
+                    _ => " (karar bekliyor)"
+                }));
+    }
+
     private static string FormatAskedQuestions(IEnumerable<ClarifyingQuestion> questions)
     {
         var list = questions.ToList();
@@ -576,17 +699,21 @@ public class ModelPipeline
             ["TOPIC"] = context.Input.Topic,
             ["RULES"] = FormatRules(context.Input),
             ["MODEL"] = ModelJson.Serialize(context.Model),
+            ["ANSWERS"] = FormatAnswers(context.Questions),
+            ["EXISTING_SUGGESTIONS"] = FormatSuggestions(context.Suggestions),
             ["AMBIGUITIES"] = FormatAmbiguities(context.Ambiguities),
             ["NOTES"] = string.Join("\n", context.NormalizationNotes)
         });
 
-        context.Suggestions.Clear();
+        // Kullanıcının karar verdiği öneriler korunur; yalnızca bekleyenler tazelenir.
+        context.Suggestions.RemoveAll(s => !s.IsApplied && s.Decision == SuggestionDecision.Pending);
 
         try
         {
             var response = await _llm.SendAsync(PipelineStage.Serialization, prompt, ct);
             context.Summary = response.Str("summary");
-            context.Suggestions.AddRange(response.StrList("suggestions"));
+            foreach (var text in response.StrList("suggestions"))
+                AddSuggestion(context, text);
         }
         catch (PipelineException ex)
         {
@@ -601,24 +728,37 @@ public class ModelPipeline
         return package;
     }
 
+    /// <summary>Aynı öneri tekrar eklenmez; kullanıcının kararı korunur.</summary>
+    private static void AddSuggestion(PipelineContext context, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (context.Suggestions.Any(s => IsSameQuestion(s.Text, text))) return;
+
+        context.Suggestions.Add(new Suggestion
+        {
+            Id = $"S{context.Suggestions.Count + 1}",
+            Text = text.Trim()
+        });
+    }
+
     private static void AddDeterministicSuggestions(PipelineContext context)
     {
-        if (context.Model.Entities.All(e =>
-                e.Attributes.Any(a => a.Name.Contains("Olusturma", StringComparison.OrdinalIgnoreCase) ||
-                                      a.Name.Contains("Oluşturma", StringComparison.OrdinalIgnoreCase))))
-            return;
+        var hasAuditFields = context.Model.Entities.All(e =>
+            e.Attributes.Any(a => NamingRules.FoldTurkish(a.Name)
+                .Contains("Olusturma", StringComparison.OrdinalIgnoreCase)));
 
-        context.Suggestions.Add(
-            "Audit alanları (OlusturmaTarihi, GuncellemeTarihi, OlusturanKullanici) kurallarda geçmediği için " +
-            "modele eklenmedi; standart pratik gereği eklenmesi önerilir.");
-
-        foreach (var relationship in context.Model.Relationships.Where(r => r.Cardinality == Cardinality.ManyToMany))
+        if (!hasAuditFields)
         {
-            var from = context.Model.FindEntity(relationship.FromEntity)?.TechnicalName ?? relationship.FromEntity;
-            var to = context.Model.FindEntity(relationship.ToEntity)?.TechnicalName ?? relationship.ToEntity;
-            context.Suggestions.Add(
-                $"{from} ↔ {to} arasındaki N-N ilişki için " +
-                $"{NamingRules.JunctionTableName(from, to)} ara tablosu gerekebilir; kurallarda açıkça geçmiyor.");
+            AddSuggestion(context,
+                "Audit alanları (OlusturmaTarihi, GuncellemeTarihi, OlusturanKullanici) kurallarda geçmediği için " +
+                "modele eklenmedi; standart pratik gereği eklenmesi önerilir.");
+        }
+
+        foreach (var orphan in ModelRules.FindUnrelatedEntities(context.Model))
+        {
+            AddSuggestion(context,
+                $"'{orphan.Name}' hiçbir tabloyla ilişkili değil. Modelde ilişkisiz tablo bulunmamalı — " +
+                "ilgili olduğu tabloyu belirtin veya varlığı kaldırın.");
         }
     }
 

@@ -12,7 +12,7 @@ public class ModelPackage
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
     public DataModel Model { get; set; } = new();
     public string Summary { get; set; } = string.Empty;
-    public List<string> Suggestions { get; set; } = new();
+    public List<Suggestion> Suggestions { get; set; } = new();
     public List<string> NormalizationNotes { get; set; } = new();
     public List<Ambiguity> Ambiguities { get; set; } = new();
     public List<ClarifyingQuestion> Questions { get; set; } = new();
@@ -28,8 +28,12 @@ public class ModelPackage
     /// <summary>Son "yeni soru üret" isteğinde kaç soru eklendiği.</summary>
     public int NewQuestionCount { get; set; }
 
+    /// <summary>Son "yeni öneri üret" isteğinde kaç öneri eklendiği.</summary>
+    public int NewSuggestionCount { get; set; }
+
     public IEnumerable<ClarifyingQuestion> OpenQuestions => Questions.Where(q => !q.IsApplied);
     public IEnumerable<ClarifyingQuestion> AppliedQuestions => Questions.Where(q => q.IsApplied);
+    public IEnumerable<Suggestion> OpenSuggestions => Suggestions.Where(s => !s.IsApplied);
 
     public IEnumerable<Ambiguity> HighImpactAmbiguities =>
         Ambiguities.Where(a => a.Impact == AmbiguityImpact.High);

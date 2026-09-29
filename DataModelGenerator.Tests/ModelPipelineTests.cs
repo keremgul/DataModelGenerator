@@ -198,7 +198,7 @@ public class ModelPipelineTests
 
         var customer = package.Model.FindEntity("Müşteri");
         Assert.NotNull(customer);
-        Assert.Equal(2, customer!.Attributes.Count);
+        Assert.Contains(customer!.Attributes, a => a.TechnicalName == "AdSoyad");
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public class ModelPipelineTests
     }
 
     [Fact]
-    public async Task RepromptAsync_KapsamBosVeyaTalepBossaHataVerir()
+    public async Task RepromptAsync_TalepBossaHataVerir()
     {
         var (pipeline, _) = Build();
         var context = new PipelineContext { Input = SampleInput() };
@@ -239,8 +239,23 @@ public class ModelPipelineTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             pipeline.RepromptAsync(context, ["Sipariş"], "   "));
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            pipeline.RepromptAsync(context, [], "bir şey değiştir"));
+    }
+
+    [Fact]
+    public async Task RepromptAsync_VarlikSecilmezseTumModeleUygulanir()
+    {
+        var (pipeline, provider) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+        await pipeline.GenerateAsync(context);
+
+        provider.Prompts.Clear();
+
+        await pipeline.RepromptAsync(context, [], "Tüm tablolara oluşturma tarihi alanı ekle.");
+
+        var prompt = provider.Prompts[0];
+        Assert.Contains("TÜM MODEL", prompt);
+        Assert.Contains("Müşteri", prompt);
+        Assert.Contains("Sipariş", prompt);
     }
 
     [Fact]
@@ -261,9 +276,14 @@ public class ModelPipelineTests
 
         var package = await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
 
-        Assert.Equal(2, package.Model.Entities.Count);
-        Assert.Contains(package.Suggestions, s => s.Contains("ara tablo"));
-        Assert.Contains(package.ValidationIssues, i => i.Code == "MANY_TO_MANY_WITHOUT_JUNCTION");
+        // Model kuralı: N-N ilişki ara tabloyla kurulur ve ara tablonun kendi ID'si olur.
+        var junction = package.Model.Entities.SingleOrDefault(e => e.IsJunction);
+        Assert.NotNull(junction);
+        Assert.Equal("ID", junction!.PrimaryKey!.TechnicalName);
+        Assert.Equal(2, junction.Attributes.Count(a => a.IsForeignKey));
+
+        Assert.DoesNotContain(package.Model.Relationships, r => r.Cardinality == Cardinality.ManyToMany);
+        Assert.DoesNotContain(package.ValidationIssues, i => i.Code == "MANY_TO_MANY_WITHOUT_JUNCTION");
     }
 }
 

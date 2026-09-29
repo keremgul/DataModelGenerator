@@ -24,6 +24,7 @@ internal class FakeModelProvider : IModelProvider
     public string? RepromptResponseOverride { get; set; }
     public string GapsResponseOverride { get; set; } = GapsResponse;
     public string QuestionsResponseOverride { get; set; } = QuestionsResponse;
+    public string SummaryResponseOverride { get; set; } = SummaryResponse;
 
     public Task<List<ModelInfo>> ListModelsAsync(ProviderConnectionSettings settings, CancellationToken ct = default) =>
         Task.FromResult(new List<ModelInfo> { new("fake-model", "fake-model") });
@@ -75,7 +76,7 @@ internal class FakeModelProvider : IModelProvider
         if (systemPrompt.Contains("ÖZET ve ÖNERİ"))
         {
             Stages.Add("summary");
-            return Task.FromResult(SummaryResponse);
+            return Task.FromResult(SummaryResponseOverride);
         }
 
         Stages.Add("bilinmeyen");

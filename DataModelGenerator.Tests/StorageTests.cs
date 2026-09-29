@@ -118,7 +118,7 @@ public class StorageTests : IDisposable
         Assert.Equal(2, workbook.Worksheets.Count);
         Assert.Contains(workbook.Worksheets, ws => ws.Name == "Musteri");
         Assert.Contains(workbook.Worksheets, ws => ws.Name == "Siparis");
-        Assert.Equal("MusteriNo", workbook.Worksheet("Musteri").Cell(1, 1).GetString());
+        Assert.Equal("ID", workbook.Worksheet("Musteri").Cell(1, 1).GetString());
         Assert.Equal(6, workbook.Worksheet("Musteri").LastRowUsed()!.RowNumber());
     }
 

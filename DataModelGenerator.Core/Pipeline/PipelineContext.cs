@@ -14,7 +14,7 @@ public class PipelineContext
     public List<Ambiguity> Ambiguities { get; } = new();
     public List<ClarifyingQuestion> Questions { get; } = new();
     public List<string> NormalizationNotes { get; } = new();
-    public List<string> Suggestions { get; } = new();
+    public List<Suggestion> Suggestions { get; } = new();
     public List<ValidationIssue> ValidationIssues { get; } = new();
     public string Summary { get; set; } = string.Empty;
     public int RoundNumber { get; set; }
@@ -35,7 +35,7 @@ public class PipelineContext
         RoundNumber = RoundNumber,
         Model = Model,
         Summary = Summary,
-        Suggestions = new List<string>(Suggestions),
+        Suggestions = new List<Suggestion>(Suggestions),
         NormalizationNotes = new List<string>(NormalizationNotes),
         Ambiguities = new List<Ambiguity>(Ambiguities),
         Questions = new List<ClarifyingQuestion>(Questions),

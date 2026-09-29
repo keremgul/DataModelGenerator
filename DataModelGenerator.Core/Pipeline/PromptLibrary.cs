@@ -36,6 +36,9 @@ public class PromptLibrary
         var sb = new StringBuilder(Get(name));
         foreach (var (key, value) in values)
             sb.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? "(belirtilmedi)" : value);
+
+        // Yapısal model kuralları her prompt'ta aynı metinle verilir.
+        sb.Replace("{{MODEL_RULES}}", Rules.ModelRules.PromptText);
         return sb.ToString();
     }
 

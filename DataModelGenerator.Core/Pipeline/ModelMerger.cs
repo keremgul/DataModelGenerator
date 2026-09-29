@@ -83,27 +83,90 @@ public static class ModelMerger
     }
 
     /// <summary>
-    /// Kapsam içindeki iki varlığı bağlayan eski ilişkileri, modelin döndürdüğü
-    /// yeni kümeyle değiştirir. Kapsam dışına uzanan ilişkilere dokunulmaz.
+    /// Yalnızca açıkça bildirilen ilişkileri kaldırır. İlişkiler hiçbir zaman
+    /// "yanıtta yok" diye silinmez; bu, reprompt'un ilişkileri eritmesini önler.
     /// </summary>
-    public static void ReplaceScopedRelationships(DataModel model,
-        IReadOnlyCollection<string> scopedEntityNames, IReadOnlyList<Relationship> returned)
+    public static List<string> RemoveRelationships(DataModel model,
+        IReadOnlyList<(string From, string To)> pairs)
     {
-        bool InScope(string entityName)
+        var removed = new List<string>();
+
+        foreach (var (from, to) in pairs)
         {
-            var resolved = model.FindEntity(entityName)?.TechnicalName ?? entityName;
-            return scopedEntityNames.Contains(resolved, StringComparer.OrdinalIgnoreCase);
+            var matches = model.Relationships
+                .Where(r => SameEntity(model, r.FromEntity, from) && SameEntity(model, r.ToEntity, to))
+                .ToList();
+
+            foreach (var match in matches)
+            {
+                model.Relationships.Remove(match);
+                removed.Add($"{match.FromEntity} → {match.ToEntity}");
+
+                // İlişkiyi taşıyan yabancı anahtar da kalkmalı, yoksa ilişki yeniden türetilir.
+                var child = model.FindEntity(match.ToEntity);
+                child?.Attributes.RemoveAll(a =>
+                    a.IsForeignKey && SameEntity(model, a.ReferencesEntity ?? string.Empty, match.FromEntity));
+            }
         }
 
-        bool ReturnedContains(Relationship existing) => returned.Any(r =>
-            SameEntity(model, r.FromEntity, existing.FromEntity) &&
-            SameEntity(model, r.ToEntity, existing.ToEntity));
+        return removed;
+    }
 
-        model.Relationships.RemoveAll(existing =>
-            InScope(existing.FromEntity) && InScope(existing.ToEntity) && !ReturnedContains(existing));
+    /// <summary>
+    /// Model kuralı: çoka-çok ilişkiler ara tabloyla kurulur. Her N-N ilişki için
+    /// kendi ID birincil anahtarı ve iki yabancı anahtarı olan bir ara tablo üretilir;
+    /// N-N ilişkinin yerini iki adet 1-N ilişki alır.
+    /// </summary>
+    public static List<string> CreateJunctionTables(DataModel model)
+    {
+        var created = new List<string>();
 
-        foreach (var relationship in returned)
-            UpsertRelationship(model, relationship);
+        foreach (var relationship in model.Relationships.Where(r => r.Cardinality == Cardinality.ManyToMany).ToList())
+        {
+            var left = model.FindEntity(relationship.FromEntity);
+            var right = model.FindEntity(relationship.ToEntity);
+            if (left is null || right is null) continue;
+
+            var junctionName = NamingRules.JunctionTableName(left.TechnicalName, right.TechnicalName);
+            var junction = model.FindEntity(junctionName);
+
+            if (junction is null)
+            {
+                junction = new ModelEntity
+                {
+                    Name = junctionName,
+                    TechnicalName = junctionName,
+                    IsJunction = true,
+                    Description = $"'{left.Name}' ile '{right.Name}' arasındaki çoka-çok ilişkiyi taşıyan ara tablo.",
+                    SourceRuleIds = new List<string>(relationship.SourceRuleIds),
+                    Confidence = relationship.Confidence,
+                    ConfidenceReason = "Model kuralı: çoka-çok ilişki ara tabloyla kurulur."
+                };
+                model.Entities.Add(junction);
+                created.Add(junctionName);
+            }
+
+            junction.IsJunction = true;
+            model.Relationships.Remove(relationship);
+
+            foreach (var parent in new[] { left, right })
+            {
+                model.Relationships.Add(new Relationship
+                {
+                    Name = "içerir",
+                    FromEntity = parent.TechnicalName,
+                    ToEntity = junction.TechnicalName,
+                    Cardinality = Cardinality.OneToMany,
+                    IsRequired = true,
+                    Description = $"'{parent.Name}' kayıtları ara tabloda listelenir.",
+                    SourceRuleIds = new List<string>(relationship.SourceRuleIds),
+                    Confidence = relationship.Confidence,
+                    ConfidenceReason = "Çoka-çok ilişkinin ara tabloya çevrilmesinden türetildi."
+                });
+            }
+        }
+
+        return created;
     }
 
     /// <summary>
