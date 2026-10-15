@@ -38,3 +38,8 @@ Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yaz
   soru olarak döner ve çözülmeden modele yansımaz.
 - Emin olmadığın bir ilişkiyi uydurma; şüphedeysen o çifti listeleme.
 - Bir kural birden çok kuralla ilişkili olabilir; her çifti ayrı satır olarak yaz.
+
+## Girdi verisi
+
+### RULES
+{{RULES}}
