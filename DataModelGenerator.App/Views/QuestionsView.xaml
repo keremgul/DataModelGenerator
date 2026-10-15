@@ -37,25 +37,55 @@
                                     <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" Foreground="#666"
                                                FontStyle="Italic" FontSize="12" Margin="0,0,0,6"/>
 
-                                    <ItemsControl ItemsSource="{Binding Options}"
-                                                  Visibility="{Binding Options, Converter={StaticResource CountToVisibility}}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Background="#E8EFFB" CornerRadius="10" Padding="8,3" Margin="0,0,6,6">
-                                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#1F3864"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <!-- Önerilen cevaplar: metin seçilebilir, kopyalanabilir ve tek tıkla kullanılabilir. -->
+                                    <StackPanel Visibility="{Binding Options, Converter={StaticResource CountToVisibility}}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="Önerilen cevaplar" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="#1F3864" VerticalAlignment="Center"/>
+                                            <Button Content="Tümünü Kopyala" Command="{Binding CopyAllOptionsCommand}"
+                                                    FontSize="10" Padding="6,1" Margin="8,0,0,0" MinWidth="0"
+                                                    ToolTip="Önerilen cevapların tamamını panoya kopyalar."/>
+                                        </StackPanel>
+
+                                        <ItemsControl ItemsSource="{Binding Options}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#E8EFFB" BorderBrush="#C5D5F0" BorderThickness="1"
+                                                            CornerRadius="4" Padding="8,5" Margin="0,0,0,5">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <!-- IsReadOnly TextBox: elle seçip kopyalamak da mümkün. -->
+                                                            <TextBox Grid.Column="0" Text="{Binding Text, Mode=OneWay}"
+                                                                     IsReadOnly="True" BorderThickness="0"
+                                                                     Background="Transparent" Foreground="#1F3864"
+                                                                     FontSize="12" TextWrapping="Wrap"
+                                                                     VerticalAlignment="Center" Padding="0"
+                                                                     AutomationProperties.Name="OnerilenCevap"/>
+
+                                                            <Button Grid.Column="1" Content="Kopyala"
+                                                                    Command="{Binding CopyCommand}"
+                                                                    FontSize="10" Padding="7,2" Margin="6,0,0,0" MinWidth="0"
+                                                                    ToolTip="Bu önerilen cevabı panoya kopyalar."/>
+                                                            <Button Grid.Column="2" Content="Bu cevabı kullan"
+                                                                    Command="{Binding UseCommand}"
+                                                                    FontSize="10" Padding="7,2" Margin="4,0,0,0" MinWidth="0"
+                                                                    ToolTip="Cevap alanına yazar; sonra düzenleyebilirsiniz."/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
 
                                     <TextBox Text="{Binding Answer, UpdateSourceTrigger=PropertyChanged}"
                                              TextWrapping="Wrap" AcceptsReturn="True" MinHeight="46"
-                                             VerticalScrollBarVisibility="Auto"
+                                             VerticalScrollBarVisibility="Auto" Margin="0,4,0,0"
+                                             AutomationProperties.Name="CevapAlani"
                                              ToolTip="Cevabınız kural listesine yeni bir madde olarak eklenir."/>
                                 </StackPanel>
                             </Border>
@@ -118,7 +148,7 @@
                 <Button Content="Yeni Sorular Üret" Command="{Binding RequestQuestionsCommand}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
                         ToolTip="Modeli daha ileri götürmek için, daha önce sorulmamış yeni sorular üretir."/>
-                <Button Content="Reprompt'a Geç →" Command="{Binding NextCommand}"/>
+                <Button Content="Sohbete Geç →" Command="{Binding NextCommand}"/>
             </StackPanel>
         </Border>
     </Grid>

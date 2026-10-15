@@ -19,8 +19,8 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _canApplyAnswers;
     [ObservableProperty] private string _roundInfo = string.Empty;
 
-    public ObservableCollection<ClarifyingQuestion> Questions { get; } = new();
-    public ObservableCollection<ClarifyingQuestion> AppliedQuestions { get; } = new();
+    public ObservableCollection<QuestionItem> Questions { get; } = new();
+    public ObservableCollection<QuestionItem> AppliedQuestions { get; } = new();
     public ObservableCollection<Ambiguity> AutoResolved { get; } = new();
 
     public QuestionsViewModel(SessionState session, MainViewModel main)
@@ -45,10 +45,10 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
         }
 
         foreach (var question in package.OpenQuestions)
-            Questions.Add(question);
+            Questions.Add(new QuestionItem(question));
 
         foreach (var question in package.AppliedQuestions.OrderBy(q => q.AppliedInRound))
-            AppliedQuestions.Add(question);
+            AppliedQuestions.Add(new QuestionItem(question));
 
         foreach (var ambiguity in package.Ambiguities.Where(a =>
                      a.Impact == AmbiguityImpact.Low && a.AppliedDefault is not null))
@@ -121,7 +121,10 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
         }
 
         // Düzenlenen eski cevaplar da gönderilir; model her zaman son cevaplara göre üretilir.
-        var answered = Questions.Concat(AppliedQuestions).Where(q => q.IsAnswered).ToList();
+        var answered = Questions.Concat(AppliedQuestions)
+            .Select(item => item.Question)
+            .Where(q => q.IsAnswered)
+            .ToList();
         if (answered.Count == 0)
         {
             ProgressText = "En az bir soruyu cevaplayın.";
