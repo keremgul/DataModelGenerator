@@ -31,8 +31,6 @@ public class GlossaryTerm
 
 public class ProjectInput
 {
-    public string Topic { get; set; } = string.Empty;
-    public string Context { get; set; } = string.Empty;
     public List<BusinessRule> Rules { get; set; } = new();
     public List<GlossaryTerm> Glossary { get; set; } = new();
 

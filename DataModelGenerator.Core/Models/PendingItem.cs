@@ -4,7 +4,10 @@ public enum PendingItemKind
 {
     Entity,
     Attribute,
-    Relationship
+    Relationship,
+
+    /// <summary>Çelişen veya tekrar eden business rule çifti — model üretiminden bağımsızdır.</summary>
+    RuleConflict
 }
 
 public enum PendingReason

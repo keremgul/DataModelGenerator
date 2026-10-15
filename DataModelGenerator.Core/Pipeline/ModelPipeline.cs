@@ -16,24 +16,26 @@ public class ModelPipeline
 {
     private readonly LlmJsonClient _llm;
     private readonly PromptLibrary _prompts;
+    private readonly SkillLibrary _skills;
     private readonly RuleEngine _ruleEngine = new();
     private readonly NormalizationEngine _normalization = new();
     private readonly ModelValidator _validator = new();
 
     public ModelPipeline(IModelProvider provider, ProviderConnectionSettings settings, string modelId,
-        PromptLibrary? prompts = null)
+        PromptLibrary? prompts = null, SkillLibrary? skills = null)
     {
         _llm = new LlmJsonClient(provider, settings, modelId);
         _prompts = prompts ?? new PromptLibrary();
+        _skills = skills ?? new SkillLibrary();
     }
 
     /// <summary>İlk üretim: kurallardan model + belirsizlik listesi.</summary>
     public async Task<ModelPackage> GenerateAsync(PipelineContext context,
         IProgress<string>? progress = null, CancellationToken ct = default)
     {
-        context.Model = new DataModel { Topic = context.Input.Topic };
+        context.Model = new DataModel();
         context.Scope.Clear();
-        return await RunAsync(context, PipelineStage.Extraction, progress, ct, generateQuestions: true);
+        return await RunAsync(context, PipelineStage.RuleRelationAnalysis, progress, ct, generateQuestions: true);
     }
 
     /// <summary>
@@ -157,7 +159,6 @@ public class ModelPipeline
         var scopedModel = isScoped ? BuildScopedModel(context.Model, context.Scope) : context.Model;
         var prompt = _prompts.Render("reprompt", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
             ["RULES"] = FormatRules(context.Input),
             ["SCOPE"] = isScoped
                 ? string.Join(", ", context.Scope)
@@ -299,6 +300,9 @@ public class ModelPipeline
 
             switch (stage)
             {
+                case PipelineStage.RuleRelationAnalysis:
+                    await AnalyzeRuleRelationsAsync(context, ct);
+                    break;
                 case PipelineStage.Extraction:
                     await ExtractEntitiesAsync(context, ct);
                     break;
@@ -328,6 +332,110 @@ public class ModelPipeline
     }
 
     // ---------------------------------------------------------------- adım 1
+    /// <summary>
+    /// Kurallar satır satır girilir ama anlamları bağımsız değildir. Bu adım her
+    /// kural çiftinin semantik ilişkisini çıkarır; çelişki ve tekrarlar modele
+    /// yansımadan önce kullanıcıya soru olarak döner.
+    /// </summary>
+    private async Task AnalyzeRuleRelationsAsync(PipelineContext context, CancellationToken ct)
+    {
+        context.RuleRelations.Clear();
+        context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.RuleConflict);
+
+        if (context.Input.Rules.Count < 2) return;
+
+        var prompt = _skills.Render("analyze-br-relations", new Dictionary<string, string>
+        {
+            ["RULES"] = FormatRules(context.Input)
+        });
+
+        JsonNode response;
+        try
+        {
+            response = await _llm.SendAsync(PipelineStage.RuleRelationAnalysis, prompt, ct);
+        }
+        catch (PipelineException ex)
+        {
+            context.NormalizationNotes.Add($"Kural ilişki analizi çalıştırılamadı: {ex.Message}");
+            return;
+        }
+
+        var known = context.Input.Rules.Select(r => r.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var node in response.Array("relations"))
+        {
+            var first = node.Str("first").Trim();
+            var second = node.Str("second").Trim();
+            if (!known.Contains(first) || !known.Contains(second)) continue;
+
+            var relation = new RuleRelation
+            {
+                FirstRuleId = first,
+                SecondRuleId = second,
+                Kind = ParseRelationKind(node.Str("kind")),
+                Explanation = node.Str("explanation")
+            };
+
+            if (relation.Kind == RuleRelationKind.Unrelated) continue;
+            context.RuleRelations.Add(relation);
+        }
+
+        AddRuleConflictQuestions(context);
+    }
+
+    /// <summary>Çelişen ve tekrar eden kurallar çözülmeden modele yansımaz.</summary>
+    private static void AddRuleConflictQuestions(PipelineContext context)
+    {
+        foreach (var relation in context.RuleRelations.Where(r => r.NeedsResolution))
+        {
+            var first = context.Input.Rules.FirstOrDefault(r => r.Id == relation.FirstRuleId);
+            var second = context.Input.Rules.FirstOrDefault(r => r.Id == relation.SecondRuleId);
+            if (first is null || second is null) continue;
+
+            var isConflict = relation.Kind == RuleRelationKind.Contradicts;
+
+            AddAmbiguity(context, new Ambiguity
+            {
+                Kind = AmbiguityKind.Other,
+                Impact = AmbiguityImpact.High,
+                Target = $"{relation.FirstRuleId} ↔ {relation.SecondRuleId}",
+                Description = isConflict
+                    ? $"Kurallar çelişiyor: {relation.Explanation}"
+                    : $"Kurallar aynı bilgiyi tekrarlıyor: {relation.Explanation}",
+                Confidence = 0.2
+            });
+
+            context.PendingItems.Add(new PendingItem
+            {
+                Kind = PendingItemKind.RuleConflict,
+                Reason = PendingReason.Uncertain,
+                Target = $"{relation.FirstRuleId} ↔ {relation.SecondRuleId}",
+                Explanation = relation.Explanation,
+                SourceRuleIds = [relation.FirstRuleId, relation.SecondRuleId],
+                Question = isConflict
+                    ? $"Bu iki kural çelişiyor. Hangisi geçerli?\n{first.Id}: {first.Text}\n{second.Id}: {second.Text}"
+                    : $"Bu iki kural aynı şeyi söylüyor. Hangisi kalsın?\n{first.Id}: {first.Text}\n{second.Id}: {second.Text}",
+                SuggestedAnswers =
+                [
+                    $"{first.Id} geçerli",
+                    $"{second.Id} geçerli",
+                    isConflict ? "İkisi farklı durumları anlatıyor, ikisi de geçerli" : "İkisi de kalsın"
+                ]
+            });
+        }
+    }
+
+    private static RuleRelationKind ParseRelationKind(string value) => value.Trim().ToLowerInvariant() switch
+    {
+        "ayni-entity" or "aynı-entity" or "sameentity" => RuleRelationKind.SameEntity,
+        "detaylandirir" or "detaylandırır" or "elaborates" => RuleRelationKind.Elaborates,
+        "bagimli" or "bağımlı" or "dependson" => RuleRelationKind.DependsOn,
+        "celisir" or "çelişir" or "contradicts" => RuleRelationKind.Contradicts,
+        "tekrar" or "duplicate" => RuleRelationKind.Duplicate,
+        _ => RuleRelationKind.Unrelated
+    };
+
+    // ---------------------------------------------------------------- adım 2
     private async Task ExtractEntitiesAsync(PipelineContext context, CancellationToken ct)
     {
         var prompt = _prompts.Render("extraction", new Dictionary<string, string>
@@ -360,7 +468,6 @@ public class ModelPipeline
             throw new PipelineException(PipelineStage.Extraction,
                 "Kurallardan hiç varlık çıkarılamadı. Kural listesini genişletip tekrar deneyin.");
 
-        context.Model.Topic = context.Input.Topic;
         context.Model.Entities = entities;
         context.Model.Relationships.RemoveAll(r =>
             context.Model.FindEntity(r.FromEntity) is null || context.Model.FindEntity(r.ToEntity) is null);
@@ -377,7 +484,6 @@ public class ModelPipeline
 
         var prompt = _prompts.Render("relationships", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
             ["RULES"] = FormatRules(context.Input),
             ["ENTITIES"] = FormatEntities(context.Model)
         });
@@ -619,7 +725,6 @@ public class ModelPipeline
 
         var prompt = _prompts.Render("questions", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
             ["MODEL"] = ModelJson.Serialize(context.Model),
             ["AMBIGUITIES"] = FormatAmbiguities(open),
             ["ASKED"] = FormatAskedQuestions(context.Questions)
@@ -739,7 +844,6 @@ public class ModelPipeline
 
         var prompt = _prompts.Render("summary", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
             ["RULES"] = FormatRules(context.Input),
             ["MODEL"] = ModelJson.Serialize(context.Model),
             ["ANSWERS"] = FormatAnswers(context.Questions),
@@ -828,7 +932,6 @@ public class ModelPipeline
 
         return new DataModel
         {
-            Topic = model.Topic,
             Entities = entities,
             Relationships = model.Relationships
                 .Where(r => names.Contains(r.FromEntity) || names.Contains(r.ToEntity))

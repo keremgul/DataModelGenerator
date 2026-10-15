@@ -8,7 +8,6 @@ public class RepromptAndQuestionLoopTests
 {
     private static ProjectInput SampleInput() => new()
     {
-        Topic = "Sipariş Yönetimi",
         Rules =
         {
             new BusinessRule { Id = "BR-1", Text = "Her müşterinin tekil bir müşteri numarası vardır." },

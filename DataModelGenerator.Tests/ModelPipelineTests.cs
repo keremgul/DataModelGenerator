@@ -9,7 +9,6 @@ public class ModelPipelineTests
 {
     private static ProjectInput SampleInput() => new()
     {
-        Topic = "Sipariş Yönetimi",
         Rules =
         {
             new BusinessRule { Id = "BR-1", Text = "Her müşterinin tekil bir müşteri numarası vardır." },
@@ -24,14 +23,14 @@ public class ModelPipelineTests
     }
 
     [Fact]
-    public async Task GenerateAsync_YediAdiminTamaminiSirayaCalistirir()
+    public async Task GenerateAsync_TumAdimlariSirayaCalistirir()
     {
         var (pipeline, provider) = Build();
 
         await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
 
         Assert.Equal(
-            ["extraction", "relationships", "attributes", "normalization", "gaps", "questions", "summary"],
+            ["rule-relations", "extraction", "relationships", "attributes", "normalization", "gaps", "questions", "summary"],
             provider.Stages);
     }
 

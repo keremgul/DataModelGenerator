@@ -156,7 +156,7 @@ public partial class ExportViewModel : ObservableObject, IRefreshable
 
     private string SuggestFileName(string extension)
     {
-        var topic = _session.Input.Topic;
+        var topic = "veri-modeli";
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string((string.IsNullOrWhiteSpace(topic) ? "veri-modeli" : topic)
             .Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();

@@ -17,4 +17,9 @@
     <EmbeddedResource Include="Resources\Prompts\*.txt" />
   </ItemGroup>
 
+  <!-- Skill dosyaları da gömülür; exe yanındaki skills\ klasörü düzenlenirse o öncelik alır. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\skills\*.md" LogicalName="DataModelGenerator.Core.Skills.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

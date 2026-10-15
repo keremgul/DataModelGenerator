@@ -43,6 +43,11 @@ internal class FakeModelProvider : IModelProvider
             Stages.Add("reprompt");
             return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
+        if (systemPrompt.Contains("Business Rule İlişki Analizi"))
+        {
+            Stages.Add("rule-relations");
+            return Task.FromResult(RuleRelationsResponse);
+        }
         if (systemPrompt.Contains("VARLIK (entity) adaylarını"))
         {
             Stages.Add("extraction");
@@ -82,6 +87,15 @@ internal class FakeModelProvider : IModelProvider
         Stages.Add("bilinmeyen");
         return Task.FromResult("{}");
     }
+
+    public string RuleRelationsResponse { get; set; } = """
+        {
+          "relations": [
+            { "first": "BR-1", "second": "BR-2", "kind": "detaylandirir",
+              "explanation": "BR-2, BR-1'deki müşteriyi sipariş bağlamında detaylandırıyor" }
+          ]
+        }
+        """;
 
     private const string DefaultEntities = """
         {

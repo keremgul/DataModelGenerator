@@ -1,7 +1,5 @@
 Sen kıdemli bir veri modelleme analistisin. Üretilen model için ÖZET ve ÖNERİ metinlerini yazacaksın.
 
-KONU: {{TOPIC}}
-
 BUSINESS RULE LİSTESİ:
 {{RULES}}
 

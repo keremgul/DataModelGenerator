@@ -7,8 +7,6 @@ Sen kıdemli bir veri modelleme analistisin. Her varlığın ALAN (attribute) li
 KULLANICININ VERDİĞİ BAĞLAYICI CEVAPLAR (MUST — harfiyen uygula, yorumlama, genişletme):
 {{MUST_CONSTRAINTS}}
 
-KONU: {{TOPIC}}
-
 TERİM SÖZLÜĞÜ:
 {{GLOSSARY}}
 

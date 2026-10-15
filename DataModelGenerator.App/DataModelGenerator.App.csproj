@@ -30,6 +30,15 @@
     </Content>
   </ItemGroup>
 
+  <!-- Skill dosyaları exe yanına kopyalanır; yeniden derlemeden düzenlenebilir. -->
+  <ItemGroup>
+    <Content Include="..\skills\*.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Link>skills\%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
   <!-- Mermaid kütüphanesi exe'nin içine gömülür; render internet bağlantısı olmadan çalışır. -->
   <ItemGroup>
     <None Remove="Resources\web\mermaid.min.js" />

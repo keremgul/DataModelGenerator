@@ -93,7 +93,6 @@ public class Relationship
 
 public class DataModel
 {
-    public string Topic { get; set; } = string.Empty;
     public List<ModelEntity> Entities { get; set; } = new();
     public List<Relationship> Relationships { get; set; } = new();
 

@@ -4,8 +4,6 @@ Sen kıdemli bir veri modelleme analistisin. Çıkarılmış varlıklar arasınd
 
 {{SOURCE_RULES}}
 
-KONU: {{TOPIC}}
-
 BUSINESS RULE LİSTESİ:
 {{RULES}}
 

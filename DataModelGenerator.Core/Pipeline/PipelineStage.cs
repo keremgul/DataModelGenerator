@@ -8,18 +8,24 @@ namespace DataModelGenerator.Core.Pipeline;
 /// </summary>
 public enum PipelineStage
 {
-    Extraction = 0,
-    RelationshipInference = 1,
-    AttributeDerivation = 2,
-    NormalizationCheck = 3,
-    GapDetection = 4,
-    QuestionGeneration = 5,
-    Serialization = 6
+    /// <summary>Kurallar arası semantik ilişki analizi — çelişki ve tekrarlar burada yakalanır.</summary>
+    RuleRelationAnalysis = 0,
+
+    Extraction = 1,
+    RelationshipInference = 2,
+    AttributeDerivation = 3,
+    NormalizationCheck = 4,
+    GapDetection = 5,
+    QuestionGeneration = 6,
+    Serialization = 7
 }
 
 public static class PipelineStageMap
 {
     /// <summary>Bir belirsizlik giderildiğinde yeniden çalıştırılması gereken ilk adım.</summary>
+    /// <summary>Kullanıcıya gösterilen toplam adım sayısı.</summary>
+    public static readonly int StageCount = Enum.GetValues<PipelineStage>().Length;
+
     public static PipelineStage AffectedStage(AmbiguityKind kind) => kind switch
     {
         AmbiguityKind.EntityExistence => PipelineStage.Extraction,
@@ -34,6 +40,7 @@ public static class PipelineStageMap
 
     public static string DisplayName(PipelineStage stage) => stage switch
     {
+        PipelineStage.RuleRelationAnalysis => "Kural ilişki analizi",
         PipelineStage.Extraction => "Varlık çıkarımı",
         PipelineStage.RelationshipInference => "İlişki ve kardinalite tespiti",
         PipelineStage.AttributeDerivation => "Alan ve tip türetimi",

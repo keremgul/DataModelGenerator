@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DataModelGenerator.Core.Models;
@@ -12,156 +11,94 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     private readonly SessionState _session;
     private readonly MainViewModel _main;
 
-    [ObservableProperty] private string _topic = string.Empty;
-    [ObservableProperty] private string _context = string.Empty;
-    [ObservableProperty] private string _pastedText = string.Empty;
+    [ObservableProperty] private string _newRuleText = string.Empty;
     [ObservableProperty] private BusinessRule? _selectedRule;
-    [ObservableProperty] private GlossaryTerm? _selectedTerm;
-    [ObservableProperty] private ObservableCollection<string> _savedRuleSets = new();
-    [ObservableProperty] private string _ruleSetName = string.Empty;
     [ObservableProperty] private string _statusMessage = string.Empty;
 
     public ObservableCollection<BusinessRule> Rules { get; } = new();
-    public ObservableCollection<GlossaryTerm> Glossary { get; } = new();
 
     public InputViewModel(SessionState session, MainViewModel main)
     {
         _session = session;
         _main = main;
 
-        Topic = session.Input.Topic;
-        Context = session.Input.Context;
         foreach (var rule in session.Input.Rules) Rules.Add(rule);
-        foreach (var term in session.Input.Glossary) Glossary.Add(term);
-
-        ReloadRuleSets();
     }
 
-    public void Refresh() => ReloadRuleSets();
+    public void Refresh() => StatusMessage = string.Empty;
 
-    private void ReloadRuleSets()
-    {
-        SavedRuleSets.Clear();
-        foreach (var name in App.RuleSetStore.ListNames())
-            SavedRuleSets.Add(name);
-    }
-
+    /// <summary>
+    /// Tek satır da olabilir, yapıştırılmış çok satırlı metin de. Metin her
+    /// durumda numaralı kural maddelerine ayrıştırılır.
+    /// </summary>
     [RelayCommand]
-    private void ParsePasted()
+    private void AddRules()
     {
-        if (string.IsNullOrWhiteSpace(PastedText))
+        if (string.IsNullOrWhiteSpace(NewRuleText))
         {
-            StatusMessage = "Ayrıştırılacak metin yok.";
+            StatusMessage = "Eklenecek kural metni girin.";
             return;
         }
 
-        var parsed = RuleTextParser.Parse(PastedText);
+        var parsed = RuleTextParser.Parse(NewRuleText);
         if (parsed.Count == 0)
         {
             StatusMessage = "Metinden kural çıkarılamadı.";
             return;
         }
 
-        var existingIds = Rules.Select(r => r.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var added = 0;
-
         foreach (var rule in parsed)
         {
-            if (existingIds.Contains(rule.Id))
-                rule.Id = NextRuleId();
-
+            rule.Id = NextRuleId();
             Rules.Add(rule);
-            existingIds.Add(rule.Id);
-            added++;
         }
 
-        PastedText = string.Empty;
-        StatusMessage = $"{added} kural eklendi.";
-    }
-
-    [RelayCommand]
-    private void AddRule()
-    {
-        Rules.Add(new BusinessRule { Id = NextRuleId(), Text = string.Empty });
-        StatusMessage = "Yeni kural satırı eklendi.";
+        NewRuleText = string.Empty;
+        StatusMessage = parsed.Count == 1 ? "1 kural eklendi." : $"{parsed.Count} kural eklendi.";
+        Renumber();
     }
 
     [RelayCommand]
     private void RemoveRule()
     {
-        if (SelectedRule is null) return;
+        if (SelectedRule is null)
+        {
+            StatusMessage = "Silmek için bir kural seçin.";
+            return;
+        }
+
         Rules.Remove(SelectedRule);
+        Renumber();
         StatusMessage = "Kural silindi.";
     }
 
     [RelayCommand]
-    private void AddTerm()
-    {
-        Glossary.Add(new GlossaryTerm());
-        StatusMessage = "Yeni terim satırı eklendi.";
-    }
+    private void MoveUp() => Move(-1);
 
     [RelayCommand]
-    private void RemoveTerm()
+    private void MoveDown() => Move(1);
+
+    private void Move(int offset)
     {
-        if (SelectedTerm is null) return;
-        Glossary.Remove(SelectedTerm);
+        if (SelectedRule is null) return;
+
+        var index = Rules.IndexOf(SelectedRule);
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= Rules.Count) return;
+
+        Rules.Move(index, target);
+        Renumber();
     }
 
-    [RelayCommand]
-    private void SaveRuleSet()
+    /// <summary>Kurallar BR-01, BR-02 … biçiminde sıralı numaralanır.</summary>
+    private void Renumber()
     {
-        var name = string.IsNullOrWhiteSpace(RuleSetName) ? Topic : RuleSetName;
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            StatusMessage = "Kayıt için bir ad girin.";
-            return;
-        }
-
-        App.RuleSetStore.Save(name, BuildInput());
-        ReloadRuleSets();
-        RuleSetName = name;
-        StatusMessage = $"'{name}' kural seti kaydedildi ({App.RuleSetStore.DirectoryPath}).";
+        var index = 1;
+        foreach (var rule in Rules.Where(r => r.Origin == RuleOrigin.User))
+            rule.Id = $"BR-{index++:00}";
     }
 
-    [RelayCommand]
-    private void LoadRuleSet(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var input = App.RuleSetStore.Load(name);
-        if (input is null)
-        {
-            StatusMessage = $"'{name}' kural seti okunamadı.";
-            return;
-        }
-
-        Topic = input.Topic;
-        Context = input.Context;
-        RuleSetName = name;
-
-        Rules.Clear();
-        foreach (var rule in input.Rules) Rules.Add(rule);
-
-        Glossary.Clear();
-        foreach (var term in input.Glossary) Glossary.Add(term);
-
-        StatusMessage = $"'{name}' kural seti yüklendi ({input.Rules.Count} kural).";
-    }
-
-    [RelayCommand]
-    private void DeleteRuleSet(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var confirm = MessageBox.Show($"'{name}' kural seti silinsin mi?", "Kural Setini Sil",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.Yes) return;
-
-        App.RuleSetStore.Delete(name);
-        ReloadRuleSets();
-        StatusMessage = $"'{name}' silindi.";
-    }
+    private string NextRuleId() => $"BR-{Rules.Count(r => r.Origin == RuleOrigin.User) + 1:00}";
 
     [RelayCommand]
     private void Back() => _main.NavigateBack();
@@ -169,12 +106,6 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     [RelayCommand]
     private void Next()
     {
-        if (string.IsNullOrWhiteSpace(Topic))
-        {
-            StatusMessage = "Konu adı zorunludur.";
-            return;
-        }
-
         var validRules = Rules.Where(r => !string.IsNullOrWhiteSpace(r.Text)).ToList();
         if (validRules.Count == 0)
         {
@@ -188,29 +119,9 @@ public partial class InputViewModel : ObservableObject, IRefreshable
             return;
         }
 
-        _session.Input = BuildInput();
+        Renumber();
+        _session.Input = new ProjectInput { Rules = validRules };
         _main.SetStatus($"{validRules.Count} kural hazır — üretim adımına geçildi.");
         _main.NavigateNext();
-    }
-
-    private ProjectInput BuildInput() => new()
-    {
-        Topic = Topic.Trim(),
-        Context = Context.Trim(),
-        Rules = Rules.Where(r => !string.IsNullOrWhiteSpace(r.Text)).ToList(),
-        Glossary = Glossary
-            .Where(g => !string.IsNullOrWhiteSpace(g.Term) && !string.IsNullOrWhiteSpace(g.TechnicalName))
-            .ToList()
-    };
-
-    private string NextRuleId()
-    {
-        var max = Rules
-            .Where(r => r.Id.StartsWith("BR-", StringComparison.OrdinalIgnoreCase))
-            .Select(r => int.TryParse(r.Id[3..], out var n) ? n : 0)
-            .DefaultIfEmpty(0)
-            .Max();
-
-        return $"BR-{max + 1}";
     }
 }

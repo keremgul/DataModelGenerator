@@ -60,7 +60,6 @@ internal static class TestModels
 
         return new DataModel
         {
-            Topic = "Sipariş Yönetimi",
             Entities = { customer, order },
             Relationships =
             {
