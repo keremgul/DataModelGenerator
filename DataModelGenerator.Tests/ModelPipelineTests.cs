@@ -117,7 +117,7 @@ public class ModelPipelineTests
         await pipeline.ApplyAnswersAsync(context, [question]);
 
         var injected = Assert.Single(context.Input.Rules, r => r.Origin == RuleOrigin.Clarification);
-        Assert.Equal("C-1", injected.Id);
+        Assert.Equal("Q-1", injected.Id);
         Assert.Contains("Evet, her sipariş tek müşteriye aittir.", injected.Text);
     }
 

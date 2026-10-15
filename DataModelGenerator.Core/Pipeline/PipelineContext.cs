@@ -24,6 +24,12 @@ public class PipelineContext
 
     public List<string> RepromptNotes { get; } = new();
 
+    /// <summary>Kaynaksız, belirsiz veya normalizasyonu geçemediği için modele alınmayan öğeler.</summary>
+    public List<PendingItem> PendingItems { get; } = new();
+
+    /// <summary>Business rule'lar arası semantik ilişkiler (aynı varlık, çelişki, tekrar…).</summary>
+    public List<RuleRelation> RuleRelations { get; } = new();
+
     /// <summary>Boşsa tüm varlıklar işlenir; doluysa yalnızca bu varlıklar LLM'e gönderilir.</summary>
     public HashSet<string> Scope { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -41,6 +47,7 @@ public class PipelineContext
         Questions = new List<ClarifyingQuestion>(Questions),
         ValidationIssues = new List<ValidationIssue>(ValidationIssues),
         RepromptNotes = new List<string>(RepromptNotes),
+        PendingItems = new List<PendingItem>(PendingItems),
         QuestionRoundsUsed = QuestionRounds
     };
 }

@@ -2,8 +2,14 @@ namespace DataModelGenerator.Core.Models;
 
 public enum RuleOrigin
 {
+    /// <summary>Kullanıcının girdiği business rule — BR-xx.</summary>
     User,
-    Clarification
+
+    /// <summary>Bir soruya verilen cevap — Q-xx.</summary>
+    Clarification,
+
+    /// <summary>Sohbetten gelen direktif — CHAT-xx.</summary>
+    Chat
 }
 
 public class BusinessRule
@@ -30,9 +36,16 @@ public class ProjectInput
     public List<BusinessRule> Rules { get; set; } = new();
     public List<GlossaryTerm> Glossary { get; set; } = new();
 
+    public static string PrefixOf(RuleOrigin origin) => origin switch
+    {
+        RuleOrigin.Clarification => "Q",
+        RuleOrigin.Chat => "CHAT",
+        _ => "BR"
+    };
+
     public string NextRuleId(RuleOrigin origin)
     {
-        var prefix = origin == RuleOrigin.Clarification ? "C" : "BR";
+        var prefix = PrefixOf(origin);
         var max = Rules
             .Where(r => r.Origin == origin && r.Id.StartsWith(prefix + "-", StringComparison.OrdinalIgnoreCase))
             .Select(r => int.TryParse(r.Id[(prefix.Length + 1)..], out var n) ? n : 0)

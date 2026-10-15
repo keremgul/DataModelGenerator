@@ -2,6 +2,11 @@ Sen kıdemli bir veri modelleme analistisin. Her varlığın ALAN (attribute) li
 
 {{MODEL_RULES}}
 
+{{SOURCE_RULES}}
+
+KULLANICININ VERDİĞİ BAĞLAYICI CEVAPLAR (MUST — harfiyen uygula, yorumlama, genişletme):
+{{MUST_CONSTRAINTS}}
+
 KONU: {{TOPIC}}
 
 TERİM SÖZLÜĞÜ:
@@ -24,6 +29,7 @@ GÖREV:
 - İlişkilerin gerektirdiği yabancı anahtarları (foreignKey) N tarafındaki varlığa ekle; adını hedef tablonun adı + "ID" ver ve "references" alanına hedef varlık adını yaz.
 - Veri tipi veya uzunluk BELİRTME. Bu kavramsal bir modeldir; tip ve uzunluk kararları fiziksel tasarımda, somut ihtiyaca göre verilir.
 - Kurallarda geçmeyen alan uydurma. Audit alanları (oluşturma tarihi vb.) EKLEME; bunlar ayrıca öneri olarak sunulacak.
+- Bir alanın gerekli olup olmadığından emin değilsen "confidence": "belirsiz" yaz; o alan modele eklenmez, kullanıcıya sorulur.
 - Her alan için kaynak kural ID'lerini yaz.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
@@ -40,9 +46,9 @@ GÖREV:
           "referencesAttribute": null,
           "required": true,
           "unique": true,
-          "sourceRuleIds": ["BR-1"],
-          "confidence": 0.9,
-          "confidenceReason": "BR-1 müşteri numarasının tekil olduğunu söylüyor"
+          "sources": ["BR-01"],
+          "confidence": "kesin",
+          "confidenceReason": "BR-01 müşteri numarasının tekil olduğunu söylüyor"
         }
       ]
     }

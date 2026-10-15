@@ -2,6 +2,8 @@ Sen kıdemli bir veri modelleme analistisin. Çıkarılmış varlıklar arasınd
 
 {{MODEL_RULES}}
 
+{{SOURCE_RULES}}
+
 KONU: {{TOPIC}}
 
 BUSINESS RULE LİSTESİ:
@@ -12,7 +14,7 @@ VARLIKLAR:
 
 GÖREV:
 - Yalnızca kurallardan çıkarılabilen ilişkileri listele.
-- Kardinalite için şu değerlerden birini kullan: "1-1", "1-N", "N-1", "N-N". Kurallardan çıkaramıyorsan "?" yaz ve confidence değerini 0.4'ün altında tut.
+- Kardinalite için şu değerlerden birini kullan: "1-1", "1-N", "N-1", "N-N". Kurallardan kesin olarak çıkaramıyorsan "?" yaz ve "confidence": "belirsiz" işaretle — bu ilişki modele eklenmez, kullanıcıya sorulur.
 - "from" her zaman ilişkinin sahibi/üst tarafı, "to" bağımlı/alt taraf olmalıdır. 1-N ilişkide "from" bir (1) tarafı, "to" çok (N) tarafıdır.
 - "required" alanı, alt tarafın üst taraf olmadan var olup olamayacağını belirtir.
 - İlişki adını fiil olarak ver (örn. "verir", "içerir", "sahiptir").
@@ -29,9 +31,9 @@ GÖREV:
       "cardinality": "1-N",
       "required": true,
       "description": "Bir müşteri birden çok sipariş verebilir",
-      "sourceRuleIds": ["BR-2"],
-      "confidence": 0.85,
-      "confidenceReason": "BR-2 'müşteri sipariş verir' diyor ama üst sınır belirtilmemiş"
+      "sources": ["BR-02"],
+      "confidence": "kesin",
+      "confidenceReason": "BR-02 bir müşterinin birden çok sipariş verdiğini açıkça söylüyor"
     }
   ]
 }

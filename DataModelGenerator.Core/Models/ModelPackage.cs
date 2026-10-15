@@ -23,6 +23,9 @@ public class ModelPackage
     /// <summary>Son reprompt turunda modelin bildirdiği notlar (kapsam dışı kalan işler vb.).</summary>
     public List<string> RepromptNotes { get; set; } = new();
 
+    /// <summary>Kaynaksız/belirsiz olduğu için modele alınmayan, cevap bekleyen öğeler.</summary>
+    public List<PendingItem> PendingItems { get; set; } = new();
+
     public int QuestionRoundsUsed { get; set; }
 
     /// <summary>Son "yeni soru üret" isteğinde kaç soru eklendiği.</summary>

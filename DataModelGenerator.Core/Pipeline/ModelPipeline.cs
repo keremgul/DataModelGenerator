@@ -331,15 +331,14 @@ public class ModelPipeline
     {
         var prompt = _prompts.Render("extraction", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
-            ["CONTEXT"] = context.Input.Context,
             ["GLOSSARY"] = FormatGlossary(context.Input),
-            ["RULES"] = FormatRules(context.Input)
+            ["RULES"] = FormatRules(context.Input),
+            ["RULE_RELATIONS"] = FormatRuleRelations(context)
         });
 
         var response = await _llm.SendAsync(PipelineStage.Extraction, prompt, ct);
 
-        var entities = new List<ModelEntity>();
+        var candidates = new List<ModelEntity>();
         foreach (var node in response.Array("entities"))
         {
             var entity = ReadEntity(node);
@@ -349,8 +348,12 @@ public class ModelPipeline
             var existing = context.Model.FindEntity(entity.Name);
             if (existing is not null) entity.Attributes = existing.Attributes;
 
-            entities.Add(entity);
+            candidates.Add(entity);
         }
+
+        // Kaynaksız veya belirsiz varlıklar modele girmez; soru listesine düşer.
+        context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.Entity);
+        var entities = SourceGuard.FilterEntities(candidates, context.Input, context.PendingItems);
 
         if (entities.Count == 0)
             throw new PipelineException(PipelineStage.Extraction,
@@ -380,18 +383,16 @@ public class ModelPipeline
 
         var response = await _llm.SendAsync(PipelineStage.RelationshipInference, prompt, ct);
 
-        var relationships = new List<Relationship>();
+        var candidates = new List<Relationship>();
         foreach (var node in response.Array("relationships"))
         {
             var relationship = ReadRelationship(node);
-            if (relationship is null) continue;
-            if (context.Model.FindEntity(relationship.FromEntity) is null) continue;
-            if (context.Model.FindEntity(relationship.ToEntity) is null) continue;
-
-            relationships.Add(relationship);
+            if (relationship is not null) candidates.Add(relationship);
         }
 
-        context.Model.Relationships = relationships;
+        context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.Relationship);
+        context.Model.Relationships =
+            SourceGuard.FilterRelationships(candidates, context.Input, context.Model, context.PendingItems);
     }
 
     // ---------------------------------------------------------------- adım 3
@@ -405,7 +406,7 @@ public class ModelPipeline
 
         var prompt = _prompts.Render("attributes", new Dictionary<string, string>
         {
-            ["TOPIC"] = context.Input.Topic,
+            ["MUST_CONSTRAINTS"] = FormatMustConstraints(context),
             ["GLOSSARY"] = FormatGlossary(context.Input),
             ["RULES"] = FormatRules(context.Input),
             ["ENTITIES"] = FormatEntities(context.Model),
@@ -417,6 +418,8 @@ public class ModelPipeline
 
         var response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
 
+        context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.Attribute);
+
         foreach (var node in response.Array("entities"))
         {
             var name = node.Str("name");
@@ -426,7 +429,19 @@ public class ModelPipeline
             if (entity is null) continue;
 
             var attributes = ReadAttributes(node);
-            if (attributes.Count > 0) entity.Attributes = attributes;
+            if (attributes.Count == 0) continue;
+
+            // Kaynaksız / belirsiz alanlar modele girmez.
+            var candidate = new ModelEntity
+            {
+                Name = entity.Name,
+                TechnicalName = entity.TechnicalName,
+                SourceRuleIds = entity.SourceRuleIds,
+                Attributes = attributes
+            };
+
+            var filtered = SourceGuard.FilterEntities([candidate], context.Input, context.PendingItems);
+            if (filtered.Count > 0) entity.Attributes = filtered[0].Attributes;
         }
 
         ApplyDeterministicLayer(context);
@@ -656,6 +671,26 @@ public class ModelPipeline
     private static string Normalize(string value) =>
         new(NamingRules.FoldTurkish(value).Where(char.IsLetterOrDigit).ToArray());
 
+    /// <summary>
+    /// Cevaplanmış sorular, serbest metin içine gömülmeden bağlayıcı kısıt bloğu
+    /// olarak verilir — model bunları yorumlayamaz, genişletemez, yok sayamaz.
+    /// </summary>
+    private static string FormatMustConstraints(PipelineContext context)
+    {
+        var applied = context.Questions.Where(q => q.IsAnswered).ToList();
+        if (applied.Count == 0) return "(henüz bağlayıcı cevap yok)";
+
+        return string.Join("\n", applied.Select(q =>
+            $"- [{q.InjectedRuleId ?? "Q"}] MUST: \"{q.Text}\" sorusunun cevabı → \"{q.Answer.Trim()}\". " +
+            "Bu cevap modelde birebir karşılık bulmalıdır."));
+    }
+
+    private static string FormatRuleRelations(PipelineContext context) =>
+        context.RuleRelations.Count == 0
+            ? "(ilişki analizi yapılmadı)"
+            : string.Join("\n", context.RuleRelations.Select(r =>
+                $"- {r.FirstRuleId} ↔ {r.SecondRuleId}: {r.Kind} — {r.Explanation}"));
+
     /// <summary>Öneri üretimi, kullanıcının cevaplarını görerek yapılır.</summary>
     private static string FormatAnswers(IEnumerable<ClarifyingQuestion> questions)
     {
@@ -805,12 +840,33 @@ public class ModelPipeline
         }
     }
 
+    /// <summary>
+    /// "confidence" artık kesin/belirsiz. Eski sayısal biçim de okunur: 0.7'nin
+    /// altı belirsiz sayılır.
+    /// </summary>
+    private static Certainty ReadCertainty(JsonNode? node)
+    {
+        var raw = node.Str("confidence").Trim();
+
+        if (raw.StartsWith("belirsiz", StringComparison.OrdinalIgnoreCase)) return Certainty.Belirsiz;
+        if (raw.StartsWith("kesin", StringComparison.OrdinalIgnoreCase)) return Certainty.Kesin;
+
+        return node.Num("confidence", 1.0) < 0.7 ? Certainty.Belirsiz : Certainty.Kesin;
+    }
+
+    /// <summary>Şema "sources" kullanır; eski "sourceRuleIds" adı da kabul edilir.</summary>
+    private static List<string> ReadSources(JsonNode? node)
+    {
+        var sources = node.StrList("sources");
+        return sources.Count > 0 ? sources : node.StrList("sourceRuleIds");
+    }
+
     private static ModelEntity? ReadEntity(JsonNode? node, string? extraRuleId = null)
     {
         var name = node.Str("name");
         if (string.IsNullOrWhiteSpace(name)) return null;
 
-        var ruleIds = node.StrList("sourceRuleIds");
+        var ruleIds = ReadSources(node);
         if (extraRuleId is not null && !ruleIds.Contains(extraRuleId)) ruleIds.Add(extraRuleId);
 
         return new ModelEntity
@@ -819,7 +875,7 @@ public class ModelPipeline
             TechnicalName = NamingRules.ToTechnicalName(name),
             Description = node.Str("description"),
             SourceRuleIds = ruleIds,
-            Confidence = node.Num("confidence"),
+            Certainty = ReadCertainty(node),
             ConfidenceReason = node.Str("confidenceReason")
         };
     }
@@ -833,7 +889,7 @@ public class ModelPipeline
             var name = node.Str("name");
             if (string.IsNullOrWhiteSpace(name)) continue;
 
-            var ruleIds = node.StrList("sourceRuleIds");
+            var ruleIds = ReadSources(node);
             if (extraRuleId is not null && !ruleIds.Contains(extraRuleId)) ruleIds.Add(extraRuleId);
 
             var references = node.Str("references");
@@ -850,7 +906,7 @@ public class ModelPipeline
                 IsRequired = node.Bool("required", true),
                 IsUnique = node.Bool("unique"),
                 SourceRuleIds = ruleIds,
-                Confidence = node.Num("confidence"),
+                Certainty = ReadCertainty(node),
                 ConfidenceReason = node.Str("confidenceReason")
             });
         }
@@ -864,7 +920,7 @@ public class ModelPipeline
         var to = node.Str("to");
         if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to)) return null;
 
-        var ruleIds = node.StrList("sourceRuleIds");
+        var ruleIds = ReadSources(node);
         if (extraRuleId is not null && !ruleIds.Contains(extraRuleId)) ruleIds.Add(extraRuleId);
 
         return new Relationship
@@ -876,7 +932,7 @@ public class ModelPipeline
             IsRequired = node.Bool("required", true),
             Description = node.Str("description"),
             SourceRuleIds = ruleIds,
-            Confidence = node.Num("confidence"),
+            Certainty = ReadCertainty(node),
             ConfidenceReason = node.Str("confidenceReason")
         };
     }

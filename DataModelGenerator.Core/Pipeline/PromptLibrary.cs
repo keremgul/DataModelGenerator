@@ -37,8 +37,9 @@ public class PromptLibrary
         foreach (var (key, value) in values)
             sb.Replace("{{" + key + "}}", string.IsNullOrWhiteSpace(value) ? "(belirtilmedi)" : value);
 
-        // Yapısal model kuralları her prompt'ta aynı metinle verilir.
+        // Yapısal kurallar ve kaynak/kesinlik sözleşmesi her prompt'ta aynı metinle verilir.
         sb.Replace("{{MODEL_RULES}}", Rules.ModelRules.PromptText);
+        sb.Replace("{{SOURCE_RULES}}", Rules.SourcePolicy.PromptText);
         return sb.ToString();
     }
 
