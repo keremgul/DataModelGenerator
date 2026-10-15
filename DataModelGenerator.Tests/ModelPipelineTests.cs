@@ -196,9 +196,37 @@ public class ModelPipelineTests
         Assert.NotNull(order);
         Assert.Contains(order!.Attributes, a => a.TechnicalName == "IndirimOrani");
 
+        // Kapsam dışındaki Müşteri korunmalı ("Ad Soyad" 1NF-1 gereği ayrıca beklemede listesine düşer).
         var customer = package.Model.FindEntity("Müşteri");
         Assert.NotNull(customer);
-        Assert.Contains(customer!.Attributes, a => a.TechnicalName == "AdSoyad");
+        Assert.Contains(customer!.Attributes, a => a.TechnicalName == "MusteriNo");
+    }
+
+    [Fact]
+    public async Task Uretim_BilesikAlaniModeleAlmazBeklemedeListesineDuser()
+    {
+        var (pipeline, _) = Build();
+
+        var package = await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
+
+        Assert.DoesNotContain(package.Model.Entities.SelectMany(e => e.Attributes),
+            a => a.TechnicalName == "AdSoyad");
+
+        Assert.Contains(package.PendingItems,
+            p => p.ViolatedRule == "1NF-1" && p.Target.Contains("Ad Soyad"));
+    }
+
+    [Fact]
+    public async Task Uretim_BirincilAnahtarAdiTurlarArasindaIDKalir()
+    {
+        var (pipeline, _) = Build();
+        var context = new PipelineContext { Input = SampleInput() };
+
+        await pipeline.GenerateAsync(context);
+        var package = await pipeline.RepromptAsync(context, ["Sipariş"], "Küçük bir değişiklik yap.");
+
+        Assert.All(package.Model.Entities, entity =>
+            Assert.Equal("ID", entity.PrimaryKey!.TechnicalName));
     }
 
     [Fact]

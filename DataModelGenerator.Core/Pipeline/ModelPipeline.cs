@@ -17,6 +17,7 @@ public class ModelPipeline
     private readonly LlmJsonClient _llm;
     private readonly PromptLibrary _prompts;
     private readonly RuleEngine _ruleEngine = new();
+    private readonly NormalizationEngine _normalization = new();
     private readonly ModelValidator _validator = new();
 
     public ModelPipeline(IModelProvider provider, ProviderConnectionSettings settings, string modelId,
@@ -448,7 +449,8 @@ public class ModelPipeline
     }
 
     /// <summary>Adlandırma, tip eşlemesi, anahtar tamamlama ve doğrulama — hepsi kod tarafında.</summary>
-    private void ApplyDeterministicLayer(PipelineContext context)
+    /// <param name="scope">Yalnızca bu varlıklar normalize edilir; null ise tüm model.</param>
+    private void ApplyDeterministicLayer(PipelineContext context, IEnumerable<string>? scope = null)
     {
         context.Ambiguities.RemoveAll(a => a.FromRuleEngine && !a.IsResolved);
 
@@ -465,6 +467,12 @@ public class ModelPipeline
 
         ModelMerger.SyncForeignKeys(context.Model);
         notes.AddRange(_ruleEngine.RelinkReferences(context.Model));
+
+        // Normalizasyon kuralları sırayla işletilir; geçemeyen alan modelde kalmaz.
+        context.PendingItems.RemoveAll(p => p.Reason == PendingReason.NormalizationBlocked);
+        context.NormalizationResults.Clear();
+        context.NormalizationResults.AddRange(
+            _normalization.Apply(context.Model, context.PendingItems, scope));
 
         foreach (var note in notes)
         {

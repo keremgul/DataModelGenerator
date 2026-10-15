@@ -69,9 +69,12 @@ public class RuleEngine
             if (string.IsNullOrWhiteSpace(attribute.Name))
                 attribute.Name = attribute.TechnicalName;
 
-            var technical = NamingRules.ToTechnicalName(
-                string.IsNullOrWhiteSpace(attribute.TechnicalName) ? attribute.Name : attribute.TechnicalName,
-                input.Glossary);
+            var source = string.IsNullOrWhiteSpace(attribute.TechnicalName) ? attribute.Name : attribute.TechnicalName;
+
+            // "ID" ve "<Tablo>ID" model kuralından gelen kanonik adlardır; PascalCase'e çevrilmemeli.
+            var technical = IsCanonicalKeyName(source)
+                ? source.Trim()
+                : NamingRules.ToTechnicalName(source, input.Glossary);
 
             attribute.TechnicalName = NamingRules.MakeUnique(technical, usedNames);
             usedNames.Add(attribute.TechnicalName);
@@ -88,6 +91,13 @@ public class RuleEngine
     /// Model kuralı: her tabloda "ID" adında tekil bir birincil anahtar bulunur.
     /// Modelin doğal anahtar olarak önerdiği alanlar tekil (unique) alana dönüştürülür.
     /// </summary>
+    private static bool IsCanonicalKeyName(string name)
+    {
+        var trimmed = name.Trim();
+        return trimmed.Equals(NamingRules.PrimaryKeyName, StringComparison.Ordinal) ||
+               (trimmed.EndsWith(NamingRules.PrimaryKeyName, StringComparison.Ordinal) && trimmed.Length > 2);
+    }
+
     private static void EnsurePrimaryKey(ModelEntity entity, List<Ambiguity> notes)
     {
         var naturalKeys = entity.Attributes

@@ -1,4 +1,5 @@
 using DataModelGenerator.Core.Models;
+using DataModelGenerator.Core.Rules;
 using DataModelGenerator.Core.Validation;
 
 namespace DataModelGenerator.Core.Pipeline;
@@ -29,6 +30,9 @@ public class PipelineContext
 
     /// <summary>Business rule'lar arası semantik ilişkiler (aynı varlık, çelişki, tekrar…).</summary>
     public List<RuleRelation> RuleRelations { get; } = new();
+
+    /// <summary>Her alan için normalizasyon sonucu — izlenebilirlik tablosunda gösterilir.</summary>
+    public List<NormalizationResult> NormalizationResults { get; } = new();
 
     /// <summary>Boşsa tüm varlıklar işlenir; doluysa yalnızca bu varlıklar LLM'e gönderilir.</summary>
     public HashSet<string> Scope { get; } = new(StringComparer.OrdinalIgnoreCase);
