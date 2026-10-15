@@ -34,6 +34,9 @@ public class PipelineContext
     /// <summary>Her alan için normalizasyon sonucu — izlenebilirlik tablosunda gösterilir.</summary>
     public List<NormalizationResult> NormalizationResults { get; } = new();
 
+    /// <summary>Cevapların modelde karşılık bulup bulmadığı.</summary>
+    public List<AnswerCompliance> AnswerCompliance { get; } = new();
+
     /// <summary>Boşsa tüm varlıklar işlenir; doluysa yalnızca bu varlıklar LLM'e gönderilir.</summary>
     public HashSet<string> Scope { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -52,6 +55,9 @@ public class PipelineContext
         ValidationIssues = new List<ValidationIssue>(ValidationIssues),
         RepromptNotes = new List<string>(RepromptNotes),
         PendingItems = new List<PendingItem>(PendingItems),
+        NormalizationResults = new List<NormalizationResult>(NormalizationResults),
+        AnswerCompliance = new List<AnswerCompliance>(AnswerCompliance),
+        RuleRelations = new List<RuleRelation>(RuleRelations),
         QuestionRoundsUsed = QuestionRounds
     };
 }

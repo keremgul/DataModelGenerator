@@ -26,6 +26,18 @@ public class ModelPackage
     /// <summary>Kaynaksız/belirsiz olduğu için modele alınmayan, cevap bekleyen öğeler.</summary>
     public List<PendingItem> PendingItems { get; set; } = new();
 
+    /// <summary>Her alanın normalizasyon (NF) durumu.</summary>
+    public List<Rules.NormalizationResult> NormalizationResults { get; set; } = new();
+
+    /// <summary>Cevapların modelde karşılık bulup bulmadığı; bulmayanlar uyarı olarak gösterilir.</summary>
+    public List<Rules.AnswerCompliance> AnswerCompliance { get; set; } = new();
+
+    /// <summary>Business rule'lar arası semantik ilişkiler.</summary>
+    public List<RuleRelation> RuleRelations { get; set; } = new();
+
+    public IEnumerable<Rules.AnswerCompliance> UnsatisfiedAnswers =>
+        AnswerCompliance.Where(a => !a.IsSatisfied);
+
     public int QuestionRoundsUsed { get; set; }
 
     /// <summary>Son "yeni soru üret" isteğinde kaç soru eklendiği.</summary>

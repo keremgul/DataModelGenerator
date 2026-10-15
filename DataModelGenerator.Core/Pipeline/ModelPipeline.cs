@@ -869,6 +869,10 @@ public class ModelPipeline
 
         AddDeterministicSuggestions(context);
 
+        // Her cevap bağlayıcı kısıttır: modelde karşılık bulup bulmadığı denetlenir.
+        context.AnswerCompliance.Clear();
+        context.AnswerCompliance.AddRange(AnswerComplianceChecker.Check(context.Model, context.Questions));
+
         var package = context.ToPackage();
         package.MermaidCode = MermaidSerializer.Serialize(context.Model);
         package.ModelJson = ModelJson.Serialize(context.Model);
