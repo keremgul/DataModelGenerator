@@ -31,20 +31,135 @@
                 <ctrl:MermaidViewer MermaidCode="{Binding MermaidCode}"/>
             </TabItem>
 
+            <!-- Özet: serbest metin yerine izlenebilirlik tablosu. Soldaki kaynak
+                 listesi ters yön gezinmeyi sağlar (BR/cevap → türeyen alanlar). -->
             <TabItem Header="Özet">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" LineHeight="20"/>
-                        <TextBlock Text="Normalizasyon Notları" Style="{StaticResource SectionHeader}"
-                                   Visibility="{Binding NormalizationNotes, Converter={StaticResource CountToVisibility}}"/>
-                        <ItemsControl ItemsSource="{Binding NormalizationNotes}">
-                            <ItemsControl.ItemTemplate>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel Grid.Column="0" Margin="8,8,4,8">
+                        <TextBlock DockPanel.Dock="Top" Text="Kaynaklar" Style="{StaticResource SectionHeader}"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource InfoText}" Margin="0,0,0,4"
+                                   Text="Bir kurala veya cevaba tıklayın: o kaynaktan türeyen alanlar sağda listelenir."/>
+                        <Button DockPanel.Dock="Bottom" Content="Tümünü Göster" Margin="0,6,0,0"
+                                Command="{Binding ClearTraceFilterCommand}"/>
+
+                        <ListBox ItemsSource="{Binding TraceSources}"
+                                 SelectedItem="{Binding SelectedTraceSource}"
+                                 AutomationProperties.Name="KaynakListesi">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Foreground="#444"/>
+                                    <StackPanel Margin="0,2" ToolTip="{Binding Tooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding RuleId}" FontSize="10" FontWeight="Bold"
+                                                       Foreground="White" Background="#2F5496" Padding="5,1"/>
+                                            <TextBlock Text="{Binding UsageText}" FontSize="10" Foreground="#888"
+                                                       Margin="6,1,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding ShortText}" FontSize="11" Foreground="#444"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                    </StackPanel>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <Grid Grid.Column="1" Margin="4,8,8,8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{Binding TraceFilterText}" Style="{StaticResource InfoText}"
+                                   Margin="0,0,0,4"/>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding TraceEntries}"
+                                  SelectedItem="{Binding SelectedTraceEntry}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                                  AutomationProperties.Name="IzlenebilirlikTablosu">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="ToolTip" Value="{Binding Tooltip}"/>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="130"/>
+                                <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="150"/>
+                                <DataGridTextColumn Header="Anahtar" Binding="{Binding KeyText}" Width="110"/>
+                                <!-- Uzun açıklama yok: kısa rozet + tooltip. -->
+                                <DataGridTextColumn Header="Kaynak" Binding="{Binding Badges}" Width="110">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Foreground" Value="#2F5496"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="BR metni" Binding="{Binding RuleSummary}" Width="*"/>
+                                <DataGridTextColumn Header="Kaynak soru" Binding="{Binding QuestionSummary}" Width="160"/>
+                                <DataGridTextColumn Header="Verilen cevap" Binding="{Binding AnswerSummary}" Width="150"/>
+                                <DataGridTextColumn Header="NF durumu" Binding="{Binding NormalizationStatus}" Width="130"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Satıra tıklandığında kaynaklar tam metniyle açılır. -->
+                        <Border Grid.Row="2" Background="#F8FAFF" BorderBrush="#C5D5F0" BorderThickness="1"
+                                CornerRadius="3" Padding="10,8" Margin="0,6,0,0" MaxHeight="190"
+                                Visibility="{Binding SelectedTraceEntry, Converter={StaticResource NullToCollapsed}}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel DataContext="{Binding SelectedTraceEntry}">
+                                    <TextBlock FontWeight="SemiBold" Foreground="#1F3864" Margin="0,0,0,4">
+                                        <Run Text="{Binding Entity, Mode=OneWay}"/><Run Text="."/><Run Text="{Binding Attribute, Mode=OneWay}"/>
+                                    </TextBlock>
+
+                                    <ItemsControl ItemsSource="{Binding Sources}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,6">
+                                                    <TextBlock Text="{Binding RuleId}" FontSize="10" FontWeight="Bold"
+                                                               Foreground="White" Background="#2F5496" Padding="5,1"
+                                                               HorizontalAlignment="Left"/>
+                                                    <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             TextWrapping="Wrap" FontSize="12" Padding="0" Margin="0,2,0,0"/>
+                                                    <StackPanel Visibility="{Binding IsQuestion, Converter={StaticResource BoolToVisibility}}">
+                                                        <TextBox Text="{Binding QuestionText, Mode=OneWay}" IsReadOnly="True"
+                                                                 BorderThickness="0" Background="Transparent" FontSize="12"
+                                                                 FontStyle="Italic" Foreground="#555" TextWrapping="Wrap" Padding="0"/>
+                                                        <TextBox Text="{Binding Answer, Mode=OneWay}" IsReadOnly="True"
+                                                                 BorderThickness="0" Background="Transparent" FontSize="12"
+                                                                 Foreground="#2C4218" TextWrapping="Wrap" Padding="0"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Text="{Binding NormalizationExplanation}" TextWrapping="Wrap"
+                                               FontSize="11" Foreground="#666"
+                                               Visibility="{Binding NormalizationExplanation, Converter={StaticResource NullToCollapsed}}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Normalizasyon Notları">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <ItemsControl ItemsSource="{Binding NormalizationNotes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Foreground="#444"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </ScrollViewer>
             </TabItem>
 
@@ -92,29 +207,6 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </DockPanel>
-            </TabItem>
-
-            <TabItem Header="İzlenebilirlik">
-                <DataGrid ItemsSource="{Binding TraceRows}" AutoGenerateColumns="False" IsReadOnly="True"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="160"/>
-                        <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="200"/>
-                        <DataGridTextColumn Header="Anahtar" Binding="{Binding Key}" Width="170"/>
-                        <DataGridTextColumn Header="Zorunlu" Binding="{Binding Required}" Width="70"/>
-                        <DataGridTextColumn Header="Kaynak Kural" Binding="{Binding SourceRules}" Width="120"/>
-                        <DataGridTextColumn Header="Güven" Binding="{Binding Confidence}" Width="60">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground"
-                                            Value="{Binding Confidence, Converter={StaticResource ConfidenceToBrush}}"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Gerekçe" Binding="{Binding Reason}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
             </TabItem>
 
             <TabItem Header="İlişkiler">

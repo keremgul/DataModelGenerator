@@ -9,17 +9,6 @@ using DataModelGenerator.Core.Validation;
 
 namespace DataModelGenerator.App.ViewModels;
 
-public class TraceRow
-{
-    public string Entity { get; init; } = string.Empty;
-    public string Attribute { get; init; } = string.Empty;
-    public string Key { get; init; } = string.Empty;
-    public string Required { get; init; } = string.Empty;
-    public string SourceRules { get; init; } = string.Empty;
-    public double Confidence { get; init; }
-    public string Reason { get; init; } = string.Empty;
-}
-
 public partial class GenerationViewModel : ObservableObject, IRefreshable
 {
     private readonly SessionState _session;
@@ -30,17 +19,32 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private string _mermaidCode = string.Empty;
     [ObservableProperty] private string _modelJson = string.Empty;
-    [ObservableProperty] private string _summary = string.Empty;
     [ObservableProperty] private string _roundInfo = string.Empty;
     [ObservableProperty] private bool _hasModel;
     [ObservableProperty] private bool _hasSuggestions;
+    [ObservableProperty] private string _traceFilterText = string.Empty;
 
     public ObservableCollection<SuggestionItem> Suggestions { get; } = new();
     public ObservableCollection<string> NormalizationNotes { get; } = new();
     public ObservableCollection<Ambiguity> Ambiguities { get; } = new();
     public ObservableCollection<ValidationIssue> ValidationIssues { get; } = new();
-    public ObservableCollection<TraceRow> TraceRows { get; } = new();
     public ObservableCollection<Relationship> Relationships { get; } = new();
+
+    /// <summary>İzlenebilirlik tablosunda gösterilen satırlar (kaynak seçiliyse filtrelenmiş).</summary>
+    public ObservableCollection<TraceEntry> TraceEntries { get; } = new();
+
+    /// <summary>Kurallar, cevaplar ve sohbet direktifleri — ters yön gezinmenin başlangıcı.</summary>
+    public ObservableCollection<TraceSource> TraceSources { get; } = new();
+
+    private TraceabilityTable _trace = new();
+
+    /// <summary>Seçilen kaynak tabloyu filtreler: o kaynaktan türeyen alanlar listelenir.</summary>
+    [ObservableProperty] private TraceSource? _selectedTraceSource;
+
+    /// <summary>Seçilen satırın kaynakları tam metniyle detay panelinde açılır.</summary>
+    [ObservableProperty] private TraceEntry? _selectedTraceEntry;
+
+    partial void OnSelectedTraceSourceChanged(TraceSource? value) => ApplyTraceFilter();
 
     public GenerationViewModel(SessionState session, MainViewModel main)
     {
@@ -221,7 +225,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     {
         MermaidCode = package.MermaidCode;
         ModelJson = package.ModelJson;
-        Summary = package.Summary;
         HasModel = package.Model.Entities.Count > 0;
         RoundInfo = $"Tur {package.RoundNumber} · {package.GeneratedAt:dd.MM.yyyy HH:mm}";
 
@@ -245,26 +248,35 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
         Relationships.Clear();
         foreach (var relationship in package.Model.Relationships) Relationships.Add(relationship);
 
-        TraceRows.Clear();
-        foreach (var entity in package.Model.Entities)
-        {
-            foreach (var attribute in entity.Attributes)
-            {
-                TraceRows.Add(new TraceRow
-                {
-                    Entity = entity.Name,
-                    Attribute = attribute.Name,
-                    Key = attribute.IsPrimaryKey ? "PK"
-                        : attribute.IsForeignKey ? $"FK → {attribute.ReferencesEntity}"
-                        : string.Empty,
-                    Required = attribute.IsRequired ? "Evet" : "Hayır",
-                    SourceRules = string.Join(", ", attribute.SourceRuleIds.Count > 0
-                        ? attribute.SourceRuleIds
-                        : entity.SourceRuleIds),
-                    Confidence = Math.Round(attribute.Confidence, 2),
-                    Reason = attribute.ConfidenceReason
-                });
-            }
-        }
+        // Serbest metin özet yerine yapılandırılmış izlenebilirlik tablosu.
+        _trace = TraceabilityTable.Build(package, _session.Input);
+
+        var previousFilter = SelectedTraceSource?.RuleId;
+        TraceSources.Clear();
+        foreach (var source in _trace.Sources) TraceSources.Add(source);
+
+        SelectedTraceEntry = null;
+        SelectedTraceSource = previousFilter is null
+            ? null
+            : TraceSources.FirstOrDefault(s => s.RuleId == previousFilter);
+
+        ApplyTraceFilter();
     }
+
+    /// <summary>Kaynak seçilmişse yalnızca o kaynaktan türeyen alanlar gösterilir.</summary>
+    private void ApplyTraceFilter()
+    {
+        TraceEntries.Clear();
+
+        var source = SelectedTraceSource;
+        var entries = source is null ? _trace.Entries : _trace.EntriesOf(source.RuleId);
+        foreach (var entry in entries) TraceEntries.Add(entry);
+
+        TraceFilterText = source is null
+            ? $"{TraceEntries.Count} alan · filtre yok"
+            : $"{source.RuleId} kaynaklı {TraceEntries.Count} alan — filtreyi kaldırmak için 'Tümünü Göster'.";
+    }
+
+    [RelayCommand]
+    private void ClearTraceFilter() => SelectedTraceSource = null;
 }
