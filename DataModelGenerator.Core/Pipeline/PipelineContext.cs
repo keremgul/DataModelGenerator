@@ -25,6 +25,9 @@ public class PipelineContext
 
     public List<string> RepromptNotes { get; } = new();
 
+    /// <summary>Sohbet geçmişi — her tur kendi direktiflerini ve gerçek diff'ini taşır.</summary>
+    public List<ChatTurn> ChatTurns { get; } = new();
+
     /// <summary>Kaynaksız, belirsiz veya normalizasyonu geçemediği için modele alınmayan öğeler.</summary>
     public List<PendingItem> PendingItems { get; } = new();
 

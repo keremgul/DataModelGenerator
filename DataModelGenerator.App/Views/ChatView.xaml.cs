@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace DataModelGenerator.App.Views;
 
-public partial class RepromptView : UserControl
+public partial class ChatView : UserControl
 {
-    public RepromptView()
+    public ChatView()
     {
         InitializeComponent();
     }

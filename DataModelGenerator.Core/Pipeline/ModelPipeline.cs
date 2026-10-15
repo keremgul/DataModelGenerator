@@ -135,6 +135,198 @@ public class ModelPipeline
     }
 
     /// <summary>
+    /// Sohbetten gelen direktifi uygular. Önce yapılandırılmış bir değişiklik
+    /// listesine çevrilir; basit işlemler LLM'siz doğrudan kodla uygulanır.
+    /// Sonuç, LLM'in beyanına değil modelin önceki/sonraki hali arasındaki
+    /// GERÇEK diff'e bakılarak doğrulanır.
+    /// </summary>
+    public async Task<(ModelPackage Package, ChatTurn Turn)> SendChatAsync(PipelineContext context,
+        string message, IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            throw new InvalidOperationException("Mesaj boş olamaz.");
+        if (context.Model.Entities.Count == 0)
+            throw new InvalidOperationException("Önce bir model üretilmelidir.");
+
+        var before = ModelJson.Deserialize(ModelJson.Serialize(context.Model))!;
+
+        var ruleId = context.Input.NextRuleId(RuleOrigin.Chat);
+        context.Input.Rules.Add(new BusinessRule
+        {
+            Id = ruleId,
+            Origin = RuleOrigin.Chat,
+            Text = message.Trim()
+        });
+
+        var turn = new ChatTurn { UserMessage = message.Trim(), RuleId = ruleId };
+        context.ChatTurns.Add(turn);
+
+        progress?.Report("Direktif çözümleniyor…");
+        turn.Directives = await RouteAsync(context, message, turn, ct);
+
+        var affected = new List<string>();
+        var needsModelCall = false;
+
+        foreach (var directive in turn.Directives)
+        {
+            if (directive.IsDeterministic)
+            {
+                // LLM çağrısı yok: yeniden adlandırma, kaldırma, kardinalite doğrudan kodla.
+                progress?.Report($"Uygulanıyor: {directive}");
+                var result = DirectiveExecutor.Execute(context.Model, directive, ruleId);
+
+                if (result.Applied)
+                    affected.AddRange(result.AffectedEntities);
+                else
+                    turn.NotApplied.Add($"{directive}: {result.Message}");
+
+                continue;
+            }
+
+            // Hedefli ama üretim gerektiren işlemler kendi skill dosyasıyla çalışır.
+            progress?.Report($"Modele iletiliyor: {directive}");
+            try
+            {
+                if (await ApplyDirectiveSkillAsync(context, directive, message, ruleId, ct))
+                {
+                    affected.Add(directive.Entity);
+                    affected.Add(directive.TargetEntity);
+                    continue;
+                }
+            }
+            catch (PipelineException ex)
+            {
+                turn.NotApplied.Add($"{directive}: {ex.Message}");
+                continue;
+            }
+
+            needsModelCall = true;
+        }
+
+        // Skill'i olmayan veya hiç direktife çevrilemeyen talepler genel yola düşer.
+        if (needsModelCall || turn.Directives.Count == 0)
+        {
+            progress?.Report("Talep modele iletiliyor…");
+            var scope = turn.Directives
+                .Where(d => !string.IsNullOrWhiteSpace(d.Entity))
+                .Select(d => d.Entity)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            await ApplyRepromptResponseAsync(context, scope, message, ruleId, ct);
+            affected.AddRange(scope);
+        }
+
+        progress?.Report("Model doğrulanıyor…");
+        var scopeNames = affected
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Yalnızca etkilenen tablolar yeniden normalize edilir; model bütün olarak doğrulanır.
+        ApplyDeterministicLayer(context, scopeNames.Count > 0 ? scopeNames : null);
+
+        turn.Changes = ModelChangeSet.Compare(before, context.Model);
+        turn.Status = DetermineStatus(turn);
+
+        var package = await SerializeAsync(context, progress, ct);
+        package.LastChatTurn = turn;
+        return (package, turn);
+    }
+
+    /// <summary>
+    /// Diff boşsa "uygulanmadı", bazı direktifler başarısızsa "kısmen uygulandı".
+    /// LLM'in "yaptım" demesi ölçüt değildir.
+    /// </summary>
+    private static ChatTurnStatus DetermineStatus(ChatTurn turn)
+    {
+        if (turn.Changes.IsEmpty)
+        {
+            if (turn.NotApplied.Count == 0)
+                turn.NotApplied.Add("Model üzerinde hiçbir değişiklik oluşmadı; talep anlaşılmamış olabilir.");
+            return ChatTurnStatus.NotApplied;
+        }
+
+        return turn.NotApplied.Count > 0 || turn.Unsupported.Count > 0
+            ? ChatTurnStatus.PartiallyApplied
+            : ChatTurnStatus.Applied;
+    }
+
+    private async Task<List<ChatDirective>> RouteAsync(PipelineContext context, string message,
+        ChatTurn turn, CancellationToken ct)
+    {
+        // Önce LLM'siz kalıp eşleştirme: "X alanının adını Y yap" gibi net talepler.
+        var matched = DirectivePatterns.TryMatch(message, context.Model);
+        if (matched is not null) return [matched];
+
+        var prompt = _skills.Render("router", new Dictionary<string, string>
+        {
+            ["MESSAGE"] = message,
+            ["MODEL"] = FormatModelOutline(context.Model)
+        });
+
+        JsonNode response;
+        try
+        {
+            response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
+        }
+        catch (PipelineException ex)
+        {
+            turn.Unsupported.Add($"Direktif çözümlenemedi: {ex.Message}");
+            return [];
+        }
+
+        turn.Unsupported.AddRange(response.StrList("unsupported"));
+
+        var directives = new List<ChatDirective>();
+        foreach (var node in response.Array("directives"))
+        {
+            var operation = ParseOperation(node.Str("operation"));
+            var entity = node.Str("entity");
+
+            // Var olmayan tabloya atıf yapan direktif uygulanmaz.
+            if (!string.IsNullOrWhiteSpace(entity) && context.Model.FindEntity(entity) is null)
+            {
+                turn.NotApplied.Add($"'{entity}' adında bir tablo yok.");
+                continue;
+            }
+
+            directives.Add(new ChatDirective
+            {
+                Operation = operation,
+                Entity = entity,
+                Field = node.Str("field"),
+                NewName = node.Str("newName"),
+                TargetEntity = node.Str("targetEntity"),
+                Cardinality = ParseCardinality(node.Str("cardinality")),
+                Fields = node.StrList("fields"),
+                Explanation = node.Str("explanation")
+            });
+        }
+
+        return directives;
+    }
+
+    private static DirectiveOperation ParseOperation(string value) => value.Trim().ToLowerInvariant() switch
+    {
+        "rename-field" => DirectiveOperation.RenameField,
+        "add-field" => DirectiveOperation.AddField,
+        "remove-field" => DirectiveOperation.RemoveField,
+        "rename-entity" => DirectiveOperation.RenameEntity,
+        "add-entity" => DirectiveOperation.AddEntity,
+        "remove-entity" => DirectiveOperation.RemoveEntity,
+        "add-relation" => DirectiveOperation.AddRelation,
+        "remove-relation" => DirectiveOperation.RemoveRelation,
+        "change-cardinality" => DirectiveOperation.ChangeCardinality,
+        "split-entity" => DirectiveOperation.SplitEntity,
+        _ => DirectiveOperation.General
+    };
+
+    private static string FormatModelOutline(DataModel model) =>
+        string.Join("\n", model.Entities.Select(e =>
+            $"- {e.Name} ({e.TechnicalName}): {string.Join(", ", e.Attributes.Select(a => a.TechnicalName))}"));
+
+    /// <summary>
     /// Serbest reprompt: yalnızca ilgili varlık/ilişki context'i ve değişiklik talebi
     /// gönderilir; modelin tamamı LLM'e aktarılmaz.
     /// </summary>
@@ -156,7 +348,33 @@ public class ModelPipeline
             ? "Seçili varlıklar için değişiklik isteniyor…"
             : "Değişiklik modelin tamamı için isteniyor…");
 
+        var ruleId = context.Input.NextRuleId(RuleOrigin.Clarification);
+        context.Input.Rules.Add(new BusinessRule
+        {
+            Id = ruleId,
+            Origin = RuleOrigin.Clarification,
+            Text = $"[Reprompt: {string.Join(", ", context.Scope)}] {request.Trim()}"
+        });
+
+        await ApplyRepromptResponseAsync(context, scopeEntities, request, ruleId, ct);
+
+        ApplyDeterministicLayer(context);
+        return await RunAsync(context, PipelineStage.NormalizationCheck, progress, ct);
+    }
+
+    /// <summary>
+    /// Modelden değişiklik ister ve yanıtı modele birleştirir. Hem reprompt hem de
+    /// sohbetteki hedefli olmayan talepler bu yolu kullanır.
+    /// </summary>
+    private async Task ApplyRepromptResponseAsync(PipelineContext context,
+        IReadOnlyCollection<string> scopeEntities, string request, string ruleId, CancellationToken ct)
+    {
+        context.Scope.Clear();
+        foreach (var name in scopeEntities) context.Scope.Add(name);
+
+        var isScoped = context.Scope.Count > 0;
         var scopedModel = isScoped ? BuildScopedModel(context.Model, context.Scope) : context.Model;
+
         var prompt = _prompts.Render("reprompt", new Dictionary<string, string>
         {
             ["RULES"] = FormatRules(context.Input),
@@ -168,15 +386,56 @@ public class ModelPipeline
         });
 
         var response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
+        MergeModelResponse(context, response, ruleId);
+    }
 
-        var ruleId = context.Input.NextRuleId(RuleOrigin.Clarification);
-        context.Input.Rules.Add(new BusinessRule
+    /// <summary>
+    /// Hedefli bir direktifi, işleme ait skill dosyasıyla modele uygular. Skill
+    /// bulunamazsa çağıran taraf genel reprompt yoluna düşer.
+    /// </summary>
+    private async Task<bool> ApplyDirectiveSkillAsync(PipelineContext context, ChatDirective directive,
+        string message, string ruleId, CancellationToken ct)
+    {
+        var skillName = SkillNameFor(directive.Operation);
+        if (skillName is null || !_skills.Exists(skillName)) return false;
+
+        // Yalnızca ilgili varlıklar gönderilir; modelin tamamı LLM'e aktarılmaz.
+        var scope = new[] { directive.Entity, directive.TargetEntity }
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var scopedModel = scope.Count > 0 ? BuildScopedModel(context.Model, scope) : context.Model;
+
+        var prompt = _skills.Render(skillName, new Dictionary<string, string>
         {
-            Id = ruleId,
-            Origin = RuleOrigin.Clarification,
-            Text = $"[Reprompt: {string.Join(", ", context.Scope)}] {request.Trim()}"
+            ["RULES"] = FormatRules(context.Input),
+            ["RULE_ID"] = ruleId,
+            ["MODEL"] = ModelJson.Serialize(scopedModel),
+            ["DIRECTIVE"] = directive.ToString(),
+            ["FIELDS"] = string.Join(", ", directive.Fields),
+            ["MESSAGE"] = message
         });
 
+        var response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
+        MergeModelResponse(context, response, ruleId);
+        return true;
+    }
+
+    private static string? SkillNameFor(DirectiveOperation operation) => operation switch
+    {
+        DirectiveOperation.AddField => "add-field",
+        DirectiveOperation.AddEntity => "add-entity",
+        DirectiveOperation.AddRelation => "add-relation",
+        DirectiveOperation.SplitEntity => "split-entity",
+        _ => null
+    };
+
+    /// <summary>
+    /// Model yanıtını mevcut modele birleştirir. Silme yalnızca modelin açıkça
+    /// bildirdiği listeler üzerinden yapılır; dönmeyen öğeler korunur.
+    /// </summary>
+    private void MergeModelResponse(PipelineContext context, JsonNode response, string ruleId)
+    {
         foreach (var node in response.Array("entities"))
         {
             var entity = ReadEntity(node, ruleId);
@@ -214,10 +473,7 @@ public class ModelPipeline
             context.RepromptNotes.Add(note);
 
         foreach (var note in context.RepromptNotes)
-            context.NormalizationNotes.Add($"Reprompt notu: {note}");
-
-        ApplyDeterministicLayer(context);
-        return await RunAsync(context, PipelineStage.NormalizationCheck, progress, ct);
+            context.NormalizationNotes.Add($"Model notu: {note}");
     }
 
     /// <summary>

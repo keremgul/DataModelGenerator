@@ -31,14 +31,14 @@ public partial class MainViewModel : ObservableObject
             new InputViewModel(_session, this),
             new GenerationViewModel(_session, this),
             new QuestionsViewModel(_session, this),
-            new RepromptViewModel(_session, this),
+            new ChatViewModel(_session, this),
             new ExportViewModel(_session, this)
         ];
 
         foreach (var title in new[]
                  {
                      "1. Bağlantı", "2. Girdi", "3. Üretim",
-                     "4. Sorular", "5. Reprompt", "6. Dışa Aktar"
+                     "4. Sorular", "5. Sohbet", "6. Dışa Aktar"
                  })
             Steps.Add(new StepItem { Title = title });
 

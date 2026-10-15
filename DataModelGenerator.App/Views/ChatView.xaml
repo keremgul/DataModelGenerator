@@ -1,0 +1,112 @@
+<UserControl x:Class="DataModelGenerator.App.Views.ChatView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:DataModelGenerator.App.Controls">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="460"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Row="0" Grid.Column="0" Margin="24,16,12,8">
+            <TextBlock DockPanel.Dock="Top" Text="Adım 5 — Sohbet" Style="{StaticResource StepHeader}" Margin="0,0,0,6"/>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding ProgressText}" Style="{StaticResource InfoText}"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <TextBox Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}" Height="76"
+                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                         AutomationProperties.Name="SohbetMesaji"
+                         ToolTip="Örn: 'Müşteri tablosunun adını Cari yap' veya 'adres bilgisini ayrı tabloya taşı'."/>
+                <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+
+            <!-- Tur geçmişi: her turda ne istendiği, neye çevrildiği ve modelde ne değiştiği. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Turns}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="4"
+                                    Padding="10,8" Margin="0,0,0,8" Background="White">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding RuleId}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="White" Background="#546E7A" Padding="5,1"
+                                                   ToolTip="Bu mesaj kural listesine bu kaynak kimliğiyle eklendi."/>
+                                        <TextBlock Text="{Binding TimeText}" FontSize="10" Foreground="#888" Margin="6,1,0,0"/>
+                                        <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{Binding StatusColor}" Margin="10,0,0,0"/>
+                                        <TextBlock Text="{Binding ChangeSummary}" FontSize="10" Foreground="#888" Margin="8,1,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding UserMessage}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+
+                                    <ItemsControl ItemsSource="{Binding Directives}" Margin="0,0,0,4">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="11"
+                                                           Foreground="#455A64" TextWrapping="Wrap"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Border Background="#E8F5E9" CornerRadius="3" Padding="8,6" Margin="0,2,0,0"
+                                            Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <TextBlock Text="Modelde oluşan gerçek fark" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="#1B5E20" Margin="0,0,0,2"/>
+                                            <ItemsControl ItemsSource="{Binding Changes}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                                                   Foreground="#1B5E20"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="#FDECEA" CornerRadius="3" Padding="8,6" Margin="0,4,0,0"
+                                            Visibility="{Binding HasProblems, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <TextBlock Text="Uygulanmayanlar" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="#8C1D18" Margin="0,0,0,2"/>
+                                            <ItemsControl ItemsSource="{Binding Problems}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                                                   Foreground="#8C1D18"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+
+        <Border Grid.Row="0" Grid.Column="1" Margin="12,16,24,8" BorderBrush="#DDD" BorderThickness="1">
+            <ctrl:MermaidViewer MermaidCode="{Binding MermaidCode}"/>
+        </Border>
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#F5F5F5" BorderBrush="#DDD"
+                BorderThickness="0,1,0,0" Padding="16,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="← Geri" Command="{Binding BackCommand}"/>
+                <Button Content="Gönder" Command="{Binding SendCommand}"
+                        Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Dışa Aktarmaya Geç →" Command="{Binding NextCommand}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -35,6 +35,9 @@ public class ModelPackage
     /// <summary>Business rule'lar arası semantik ilişkiler.</summary>
     public List<RuleRelation> RuleRelations { get; set; } = new();
 
+    /// <summary>Son sohbet turu — direktifleri ve modelde oluşan gerçek değişikliği taşır.</summary>
+    public ChatTurn? LastChatTurn { get; set; }
+
     public IEnumerable<Rules.AnswerCompliance> UnsatisfiedAnswers =>
         AnswerCompliance.Where(a => !a.IsSatisfied);
 

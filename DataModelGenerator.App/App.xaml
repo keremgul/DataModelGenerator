@@ -28,8 +28,8 @@
         <DataTemplate DataType="{x:Type vm:QuestionsViewModel}">
             <views:QuestionsView/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:RepromptViewModel}">
-            <views:RepromptView/>
+        <DataTemplate DataType="{x:Type vm:ChatViewModel}">
+            <views:ChatView/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ExportViewModel}">
             <views:ExportView/>

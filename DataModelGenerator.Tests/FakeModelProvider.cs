@@ -43,6 +43,16 @@ internal class FakeModelProvider : IModelProvider
             Stages.Add("reprompt");
             return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
+        if (systemPrompt.Contains("Direktif Yönlendirici"))
+        {
+            Stages.Add("router");
+            return Task.FromResult(RouterResponse);
+        }
+        if (systemPrompt.Contains("Skill: Alan Ekle"))
+        {
+            Stages.Add("add-field");
+            return Task.FromResult(AddFieldResponse);
+        }
         if (systemPrompt.Contains("Business Rule İlişki Analizi"))
         {
             Stages.Add("rule-relations");
@@ -87,6 +97,27 @@ internal class FakeModelProvider : IModelProvider
         Stages.Add("bilinmeyen");
         return Task.FromResult("{}");
     }
+
+    /// <summary>Sohbet mesajının çevrileceği direktif listesi.</summary>
+    public string RouterResponse { get; set; } = """{"directives":[],"unsupported":[]}""";
+
+    public string AddFieldResponse { get; set; } = """
+        {
+          "entities": [
+            {
+              "name": "Müşteri",
+              "sourceRuleIds": ["BR-1"],
+              "attributes": [
+                { "name": "ID", "primaryKey": true, "required": true, "sources": ["BR-1"], "confidence": "kesin" },
+                { "name": "Ad Soyad", "required": true, "sources": ["BR-1"], "confidence": "kesin" },
+                { "name": "Vergi No", "sources": ["CHAT-1"], "confidence": "kesin" }
+              ]
+            }
+          ],
+          "relationships": [],
+          "notes": []
+        }
+        """;
 
     public string RuleRelationsResponse { get; set; } = """
         {
