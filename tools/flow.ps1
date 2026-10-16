@@ -115,6 +115,13 @@ if ($null -ne $tab) {
     Save-Shot "flow-4-beklemede"
 }
 
+$tab = Find-By "Öneriler"
+if ($null -ne $tab) {
+    $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    Start-Sleep -Milliseconds 1000
+    Save-Shot "flow-4b-oneriler"
+}
+
 # --- 4. Sorular -------------------------------------------------------------
 Click-Step 3
 Start-Sleep -Milliseconds 800
