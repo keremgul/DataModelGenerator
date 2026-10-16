@@ -1,5 +1,7 @@
 Sen kıdemli bir veri modelleme analistisin. Yüksek etkili belirsizlikler için analiste soracağın HEDEFLİ SORULARI üreteceksin.
 
+{{RELATION_RULES}}
+
 MODEL:
 {{MODEL}}
 

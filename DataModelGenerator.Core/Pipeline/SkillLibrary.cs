@@ -22,6 +22,15 @@ public class SkillLibrary
 
     public string Directory => _directory;
 
+    /// <summary>
+    /// İlişki ve yabancı anahtar adlandırmasının tek kaynağı. Hem model üretimi
+    /// hem soru üretimi hem de sohbet prompt'larına {{RELATION_RULES}} olarak
+    /// gömülür; dosya düzenlenirse tüm çağrı noktaları birlikte değişir.
+    /// </summary>
+    public string RelationRules => Exists("relationship-naming")
+        ? Get("relationship-naming")
+        : Rules.ModelRules.PromptText;
+
     public bool Exists(string name) =>
         File.Exists(Path.Combine(_directory, name + ".md")) || Embedded(name) is not null;
 
@@ -44,6 +53,9 @@ public class SkillLibrary
 
         sb.Replace("{{MODEL_RULES}}", Rules.ModelRules.PromptText);
         sb.Replace("{{SOURCE_RULES}}", Rules.SourcePolicy.PromptText);
+        // İlişki kuralları dosyası kendi içinde {{NAMING_RULES}} kullanıyor;
+        // bu yüzden önce o gömülür, sonra adlandırma kuralları genişletilir.
+        sb.Replace("{{RELATION_RULES}}", RelationRules);
         sb.Replace("{{NAMING_RULES}}", Rules.NamingRules.Policy.Describe());
         return sb.ToString();
     }

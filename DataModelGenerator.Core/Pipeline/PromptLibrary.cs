@@ -13,12 +13,19 @@ public class PromptLibrary
 
     private readonly string _overrideDirectory;
     private readonly Dictionary<string, string> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private Func<string>? _relationRules;
 
     public PromptLibrary(string? overrideDirectory = null)
     {
         _overrideDirectory = overrideDirectory
             ?? Path.Combine(AppContext.BaseDirectory, "Resources", "Prompts");
     }
+
+    /// <summary>
+    /// İlişki kurallarının kaynağı skill kütüphanesidir; prompt şablonları da
+    /// aynı metni kullansın diye buradan beslenir.
+    /// </summary>
+    public void UseRelationRules(Func<string> provider) => _relationRules = provider;
 
     public string Get(string name)
     {
@@ -40,6 +47,10 @@ public class PromptLibrary
         // Yapısal kurallar ve kaynak/kesinlik sözleşmesi her prompt'ta aynı metinle verilir.
         sb.Replace("{{MODEL_RULES}}", Rules.ModelRules.PromptText);
         sb.Replace("{{SOURCE_RULES}}", Rules.SourcePolicy.PromptText);
+
+        // İlişki kuralları dosyası kendi içinde {{NAMING_RULES}} kullanıyor;
+        // bu yüzden önce o gömülür, sonra adlandırma kuralları genişletilir.
+        sb.Replace("{{RELATION_RULES}}", _relationRules?.Invoke() ?? string.Empty);
         sb.Replace("{{NAMING_RULES}}", Rules.NamingRules.Policy.Describe());
         return sb.ToString();
     }

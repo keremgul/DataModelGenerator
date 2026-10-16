@@ -7,6 +7,8 @@ Modele yeni bir tablo ekler. Yalnızca istenen tablo eklenir; "bunun yanında
 
 {{MODEL_RULES}}
 
+{{RELATION_RULES}}
+
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
 

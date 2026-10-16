@@ -92,6 +92,15 @@ public class ModelEntity
 public class Relationship
 {
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Aynı tablo çiftine birden çok ilişki varsa bunları ayıran rol
+    /// (GONDEREN, ALICI…). Yabancı anahtar adındaki önekten türer. Boşsa
+    /// çift arasında tek ilişki vardır. İlişkinin kimliği (kaynak, hedef, rol)
+    /// üçlüsüdür — serbest metin olan Name değil.
+    /// </summary>
+    public string Role { get; set; } = string.Empty;
+
     public string FromEntity { get; set; } = string.Empty;
     public string ToEntity { get; set; } = string.Empty;
     public Cardinality Cardinality { get; set; } = Cardinality.Unknown;

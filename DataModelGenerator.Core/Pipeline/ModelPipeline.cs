@@ -27,6 +27,9 @@ public class ModelPipeline
         _llm = new LlmJsonClient(provider, settings, modelId);
         _prompts = prompts ?? new PromptLibrary();
         _skills = skills ?? new SkillLibrary();
+
+        // İlişki kuralları tek kaynaktan gelir: skills/relationship-naming.md.
+        _prompts.UseRelationRules(() => _skills.RelationRules);
     }
 
     /// <summary>İlk üretim: kurallardan model + belirsizlik listesi.</summary>
@@ -940,6 +943,12 @@ public class ModelPipeline
         // kurala uymayan bir ad döndürürse burada düzeltilir.
         foreach (var correction in NamingEnforcer.Enforce(context.Model))
             context.NormalizationNotes.Add(correction);
+
+        // <TABLOADI>ID kalıbı ilişkinin kendisidir; eksik ilişki kurulur,
+        // mükerrer tanım elenir, hedefi bulunamayan referans uyarıya döner.
+        // Mevcut yapı dosyasındaki tablolar bu listeye madde 4'te bağlanacak.
+        foreach (var note in RelationshipRules.Apply(context.Model, context.PendingItems))
+            context.NormalizationNotes.Add(note);
 
         // Normalizasyon kuralları sırayla işletilir; geçemeyen alan modelde kalmaz.
         context.PendingItems.RemoveAll(p => p.Reason == PendingReason.NormalizationBlocked);

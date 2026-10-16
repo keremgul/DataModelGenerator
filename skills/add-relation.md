@@ -6,6 +6,8 @@
 
 {{MODEL_RULES}}
 
+{{RELATION_RULES}}
+
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
 

@@ -7,6 +7,8 @@ ilişkiyi kurar. Normalizasyon ihlallerinin (1NF/2NF/3NF) tipik çözümü budur
 
 {{MODEL_RULES}}
 
+{{RELATION_RULES}}
+
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
 Hem kaynak tabloyu (taşınan alanlar çıkarılmış hâliyle) hem yeni tabloyu döndür.

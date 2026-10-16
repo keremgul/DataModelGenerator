@@ -2,6 +2,8 @@ Sen kıdemli bir veri modelleme analistisin. Mevcut model üzerinde, kullanıcı
 
 {{MODEL_RULES}}
 
+{{RELATION_RULES}}
+
 BUSINESS RULE LİSTESİ:
 {{RULES}}
 

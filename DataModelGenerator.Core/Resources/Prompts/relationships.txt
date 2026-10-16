@@ -2,6 +2,8 @@ Sen kıdemli bir veri modelleme analistisin. Çıkarılmış varlıklar arasınd
 
 {{MODEL_RULES}}
 
+{{RELATION_RULES}}
+
 {{SOURCE_RULES}}
 
 BUSINESS RULE LİSTESİ:

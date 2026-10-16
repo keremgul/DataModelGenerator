@@ -1,5 +1,7 @@
 # Skill: Sohbet Yanıtı
 
+{{RELATION_RULES}}
+
 Bir sohbet turu uygulandıktan **sonra** çalışır. Görevin iki şey:
 
 1. Kullanıcıya ne olduğunu kendi cümlelerinle anlatmak,
