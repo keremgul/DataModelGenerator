@@ -55,7 +55,13 @@
 
                         <ListBox ItemsSource="{Binding TraceSources}"
                                  SelectedItem="{Binding SelectedTraceSource}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AutomationProperties.Name="KaynakListesi">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,2" ToolTip="{Binding Tooltip}">

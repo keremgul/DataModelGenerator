@@ -172,6 +172,26 @@ public class TraceabilityTableTests
     }
 
     [Fact]
+    public void NormalizasyonSonucu_GorunenAdlaKaydedilmisOlsaDaEslesir()
+    {
+        var package = Package();
+
+        // Motor sonucu tablonun ve alanın görünen adıyla yazar; model teknik adla çalışır.
+        package.NormalizationResults.Add(new NormalizationResult
+        {
+            Entity = "Müşteri",
+            Attribute = "Sipariş Sahibi",
+            Outcome = NormalizationOutcome.Decomposed,
+            Explanation = "Ayrıştırıldı."
+        });
+
+        var table = TraceabilityTable.Build(package, Input());
+        var row = table.Entries.Single(e => e.Attribute == "SiparisSahibi");
+
+        Assert.Equal("AYRIŞTIRILDI", row.NormalizationStatus);
+    }
+
+    [Fact]
     public void UzunMetin_TablodaKisaltilir()
     {
         var input = Input();

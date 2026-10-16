@@ -137,6 +137,8 @@ public class TraceabilityTable
             };
         }
 
+        // Normalizasyon sonuçları görünen adla, model ise teknik adla çalışır;
+        // eşleştirme iki adın da denenmesiyle yapılır.
         var normalization = package.NormalizationResults
             .GroupBy(r => $"{r.Entity}.{r.Attribute}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
@@ -158,7 +160,7 @@ public class TraceabilityTable
 
                 foreach (var source in entrySources) source.UsageCount++;
 
-                normalization.TryGetValue($"{entity.TechnicalName}.{attribute.TechnicalName}", out var nf);
+                var nf = FindNormalization(normalization, entity, attribute);
 
                 table.Entries.Add(new TraceEntry
                 {
@@ -180,6 +182,24 @@ public class TraceabilityTable
             .ThenBy(s => s.RuleId, StringComparer.OrdinalIgnoreCase));
 
         return table;
+    }
+
+    private static Rules.NormalizationResult? FindNormalization(
+        IReadOnlyDictionary<string, Rules.NormalizationResult> results, ModelEntity entity, EntityAttribute attribute)
+    {
+        string[] entityNames = [entity.TechnicalName, entity.Name];
+        string[] attributeNames = [attribute.TechnicalName, attribute.Name];
+
+        foreach (var entityName in entityNames)
+        {
+            foreach (var attributeName in attributeNames)
+            {
+                if (results.TryGetValue($"{entityName}.{attributeName}", out var found))
+                    return found;
+            }
+        }
+
+        return null;
     }
 
     private static string KindOf(string ruleId)
