@@ -15,6 +15,7 @@ ve `{{SOURCE_RULES}}` her dosyada otomatik olarak genişler.
 | `add-entity.md` | `add-entity` direktifi | ✔ |
 | `add-relation.md` | `add-relation` direktifi | ✔ |
 | `split-entity.md` | `split-entity` direktifi | ✔ |
+| `normalize.md` | Referans: normalizasyonun ne zaman ve nasıl işletildiği | ✘ |
 | `deterministic-operations.md` | Referans: LLM'siz uygulanan işlemler | ✘ |
 | `NORMALIZATION_RULES.md` | Referans: sırayla işletilen normalizasyon kuralları | ✘ |
 

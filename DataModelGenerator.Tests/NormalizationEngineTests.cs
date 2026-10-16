@@ -158,4 +158,154 @@ public class NormalizationEngineTests
         Assert.Contains(model.Entities[0].Attributes, a => a.Name == "Ad Soyad");
         Assert.DoesNotContain(model.Entities[1].Attributes, a => a.Name == "Adres");
     }
+
+    // ---------------------------------------------------- PK-2 / 1NF-4 / BCNF-1
+
+    [Fact]
+    public void PK2_AnahtarZorunluVeTekilOlarakDuzeltilir()
+    {
+        var model = ModelWith();
+        var key = model.Entities[0].Attributes[0];
+        key.IsRequired = false;
+        key.IsUnique = false;
+
+        var results = _engine.Apply(model, new List<PendingItem>());
+
+        Assert.True(key.IsRequired);
+        Assert.True(key.IsUnique);
+
+        var result = results.Single(r => r.AppliedRules.Contains("PK-2"));
+        Assert.Equal(NormalizationOutcome.Decomposed, result.Outcome);
+        Assert.Equal("AYRIŞTIRILDI", result.StatusText);
+    }
+
+    [Fact]
+    public void AnahtarKurallariHerTabloIcinIsletilir()
+    {
+        var results = _engine.Apply(ModelWith(Field("Vergi No")), new List<PendingItem>());
+
+        var keyResult = results.Single(r => r.Attribute == "(birincil anahtar)");
+        Assert.Contains("PK-1", keyResult.AppliedRules);
+        Assert.Contains("PK-2", keyResult.AppliedRules);
+        Assert.Contains("1NF-4", keyResult.AppliedRules);
+        Assert.Contains("BCNF-1", keyResult.AppliedRules);
+    }
+
+    // ---------------------------------------------------------------- 2NF-2
+
+    [Fact]
+    public void BilesikAnahtar2NF2denGecemezVeSorulur()
+    {
+        var model = ModelWith(Field("Tutar"));
+        model.Entities[0].Attributes.Add(new EntityAttribute
+        {
+            Name = "Dönem", TechnicalName = "Donem", IsPrimaryKey = true
+        });
+
+        var pending = new List<PendingItem>();
+        var results = _engine.Apply(model, pending);
+
+        Assert.Contains(results, r => r.ViolatedRule == "2NF-2");
+        var item = Assert.Single(pending, p => p.ViolatedRule == "2NF-2");
+        Assert.Contains("bileşik anahtar", item.Explanation);
+        Assert.NotEmpty(item.SuggestedAnswers);
+    }
+
+    [Fact]
+    public void TekSutunluAnahtarda2NF2Sorulmaz()
+    {
+        var pending = new List<PendingItem>();
+        _engine.Apply(ModelWith(Field("Tutar")), pending);
+
+        Assert.DoesNotContain(pending, p => p.ViolatedRule == "2NF-2");
+    }
+
+    // ---------------------------------------------------------------- 3NF-2
+
+    [Fact]
+    public void GecisliBagimlilik3NF2denGecemez()
+    {
+        var model = ModelWith(Field("Il Kodu"), Field("Il Adi"));
+
+        var pending = new List<PendingItem>();
+        var results = _engine.Apply(model, pending);
+
+        // Belirleyici kalır, ona bağlı açıklayıcı alan modele girmez.
+        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "IlKodu");
+        Assert.DoesNotContain(model.Entities[0].Attributes, a => a.TechnicalName == "IlAdi");
+
+        Assert.Contains(results, r => r.ViolatedRule == "3NF-2");
+        var item = Assert.Single(pending, p => p.ViolatedRule == "3NF-2");
+        Assert.Contains("Geçişli bağımlılık", item.Explanation);
+    }
+
+    [Fact]
+    public void TablonunKendiAdiGecisliBagimlilikSayilmaz()
+    {
+        var model = ModelWith(Field("Musteri Kodu"), Field("Musteri Adi"));
+
+        var pending = new List<PendingItem>();
+        _engine.Apply(model, pending);
+
+        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "MusteriAdi");
+        Assert.DoesNotContain(pending, p => p.ViolatedRule == "3NF-2");
+    }
+
+    // ------------------------------------------------------------ REL-2 / REL-3
+
+    [Fact]
+    public void KardinalitesiBilinmeyenIliskiREL2denGecemez()
+    {
+        var model = ModelWith();
+        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "Siparis" });
+        model.Relationships.Add(new Relationship
+        {
+            FromEntity = "Musteri", ToEntity = "Siparis", Cardinality = Cardinality.Unknown
+        });
+
+        var pending = new List<PendingItem>();
+        var results = _engine.Apply(model, pending);
+
+        Assert.Empty(model.Relationships);
+        Assert.Contains(results, r => r.ViolatedRule == "REL-2");
+        Assert.Contains(pending, p => p.ViolatedRule == "REL-2");
+    }
+
+    [Fact]
+    public void CozulmemisCokaCokIliskiREL3tenGecemez()
+    {
+        var model = ModelWith();
+        model.Entities.Add(new ModelEntity { Name = "Ürün", TechnicalName = "Urun" });
+        model.Relationships.Add(new Relationship
+        {
+            FromEntity = "Musteri", ToEntity = "Urun", Cardinality = Cardinality.ManyToMany
+        });
+
+        var pending = new List<PendingItem>();
+        var results = _engine.Apply(model, pending);
+
+        Assert.Contains(results, r => r.ViolatedRule == "REL-3");
+        Assert.Contains(pending, p => p.ViolatedRule == "REL-3");
+    }
+
+    [Fact]
+    public void DesteklenenIliskiREL2VeREL3uGecer()
+    {
+        var model = ModelWith();
+        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "Siparis" });
+        model.Relationships.Add(new Relationship
+        {
+            FromEntity = "Musteri", ToEntity = "Siparis", Cardinality = Cardinality.OneToMany,
+            SourceRuleIds = { "BR-02" }
+        });
+
+        var pending = new List<PendingItem>();
+        var results = _engine.Apply(model, pending);
+
+        var result = results.Single(r => r.Attribute == "(ilişki)");
+        Assert.Equal(NormalizationOutcome.Passed, result.Outcome);
+        Assert.Contains("REL-2", result.AppliedRules);
+        Assert.Contains("REL-3", result.AppliedRules);
+        Assert.DoesNotContain(pending, p => p.ViolatedRule?.StartsWith("REL") == true);
+    }
 }
