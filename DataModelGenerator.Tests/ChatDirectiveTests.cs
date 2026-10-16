@@ -50,6 +50,27 @@ public class ChatDirectiveTests
     }
 
     [Fact]
+    public async Task AlanAdiDegisikligi_TumPipelineiBastanCalistirmaz()
+    {
+        var (pipeline, provider, context) = await Generated();
+
+        await pipeline.SendChatAsync(context, "Sipariş tablosunun Tutar alanının adını NetTutar yap");
+
+        // Model üretim adımlarının hiçbiri tekrar çalışmamalı.
+        Assert.DoesNotContain("rule-relations", provider.Stages);
+        Assert.DoesNotContain("extraction", provider.Stages);
+        Assert.DoesNotContain("relationships", provider.Stages);
+        Assert.DoesNotContain("attributes", provider.Stages);
+        Assert.DoesNotContain("gaps", provider.Stages);
+        Assert.DoesNotContain("questions", provider.Stages);
+
+        // Geriye yalnızca özet/öneri tazelemesi kalır.
+        Assert.Equal(["summary"], provider.Stages);
+        Assert.Contains(context.Model.FindEntity("Sipariş")!.Attributes,
+            a => a.TechnicalName == "NetTutar");
+    }
+
+    [Fact]
     public async Task AlanKaldirma_KalipEslesmesiyleUygulanir()
     {
         var (pipeline, provider, context) = await Generated();

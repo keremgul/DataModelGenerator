@@ -82,10 +82,28 @@ public static partial class DirectivePatterns
         return null;
     }
 
-    /// <summary>Kalıp yalnızca modelde gerçekten var olan bir tabloya işaret ediyorsa geçerlidir.</summary>
+    /// <summary>
+    /// Kullanıcı tabloyu "Sipariş" diye de "Sipariş tablosunun" diye de yazabilir;
+    /// ek atıldıktan sonra modelde gerçekten var olan bir tabloya işaret
+    /// ediyorsa kalıp geçerlidir.
+    /// </summary>
+    private static readonly string[] TableWords =
+        ["tablosundaki", "tablosundan", "tablosunun", "tablosunda", "tablosuna", "tablosunu", "tablosu", "tablo"];
+
     private static string? Resolve(DataModel model, string candidate)
     {
         var trimmed = candidate.Trim();
-        return model.FindEntity(trimmed)?.TechnicalName;
+        if (model.FindEntity(trimmed) is { } direct) return direct.TechnicalName;
+
+        foreach (var word in TableWords)
+        {
+            if (!trimmed.EndsWith(word, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var stripped = trimmed[..^word.Length].Trim();
+            if (stripped.Length > 0 && model.FindEntity(stripped) is { } found)
+                return found.TechnicalName;
+        }
+
+        return null;
     }
 }
