@@ -9,8 +9,8 @@ kendiliğinden başka alan, başka tablo veya ilişki eklenmez.
 
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
-Değişen tabloyu **tüm alanlarıyla** döndür — eksik bıraktığın alan silinmez,
-ama güncellenmez de.
+Yalnızca **eklenen alanı** döndürmen yeterlidir: alanlar modele eklenerek
+birleştirilir, dönmeyen alanlar olduğu gibi korunur.
 
 ```json
 {
@@ -22,13 +22,6 @@ ama güncellenmez de.
       "sources": ["BR-01"],
       "confidence": "kesin",
       "attributes": [
-        {
-          "name": "ID",
-          "isPrimaryKey": true,
-          "description": "Birincil anahtar",
-          "sources": ["BR-01"],
-          "confidence": "kesin"
-        },
         {
           "name": "VergiNo",
           "description": "Kurumsal müşterinin vergi numarası",
@@ -49,7 +42,9 @@ ama güncellenmez de.
   kaldığını yaz ve `confidence` değerini `belirsiz` ver.
 - Alan tipi veya uzunluğu yazma — model tipsizdir.
 - Zaten var olan bir alanı tekrar eklemeye çalışma; adı aynıysa açıklamasını güncelle.
-- `removedEntities` / `removedRelationships` kullanmana gerek yok; bu işlem silme yapmaz.
+- Bu işlem silme yapmaz: `removedFields`, `removedEntities` veya
+  `removedRelationships` kullanma.
+- MODEL içinde zaten var olan alanları tekrar yazmana gerek yok; yazmazsan silinmezler.
 
 ## Girdi verisi
 

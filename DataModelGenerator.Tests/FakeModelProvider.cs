@@ -43,6 +43,11 @@ internal class FakeModelProvider : IModelProvider
             Stages.Add("reprompt");
             return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
+        if (systemPrompt.Contains("Skill: Sohbet Yanıtı"))
+        {
+            Stages.Add("chat");
+            return Task.FromResult(ChatReplyResponse);
+        }
         if (systemPrompt.Contains("Direktif Yönlendirici"))
         {
             Stages.Add("router");
@@ -100,6 +105,20 @@ internal class FakeModelProvider : IModelProvider
 
     /// <summary>Sohbet mesajının çevrileceği direktif listesi.</summary>
     public string RouterResponse { get; set; } = """{"directives":[],"unsupported":[]}""";
+
+    /// <summary>Tur uygulandıktan sonra kullanıcıya yazılan yanıt ve öneriler.</summary>
+    public string ChatReplyResponse { get; set; } = """
+        {
+          "reply": "İstediğin değişikliği uyguladım.",
+          "suggestions": [
+            {
+              "text": "Sipariş tablosuna SiparisTarihi alanı eklenebilir",
+              "reason": "Siparişin ne zaman oluştuğu hiçbir alanda tutulmuyor",
+              "relatedEntities": ["Sipariş"]
+            }
+          ]
+        }
+        """;
 
     public string AddFieldResponse { get; set; } = """
         {

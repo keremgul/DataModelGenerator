@@ -47,6 +47,13 @@
 
                                     <TextBlock Text="{Binding UserMessage}" TextWrapping="Wrap" Margin="0,0,0,6"/>
 
+                                    <!-- Modelin yanıtı: gerçek diff'e dayanır, seçilip kopyalanabilir. -->
+                                    <TextBox Text="{Binding Reply, Mode=OneWay}" IsReadOnly="True"
+                                             BorderThickness="0" Background="Transparent" Padding="0"
+                                             FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                                             Foreground="#263238"
+                                             Visibility="{Binding HasReply, Converter={StaticResource BoolToVisibility}}"/>
+
                                     <ItemsControl ItemsSource="{Binding Directives}" Margin="0,0,0,4">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -66,6 +73,32 @@
                                                     <DataTemplate>
                                                         <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
                                                                    Foreground="#1B5E20"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Öneriler teklif olarak kalır; kullanıcı istemeden modele uygulanmaz. -->
+                                    <Border Background="#F3F7FF" BorderBrush="#C5D5F0" BorderThickness="1"
+                                            CornerRadius="3" Padding="8,6" Margin="0,4,0,0"
+                                            Visibility="{Binding HasSuggestions, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <TextBlock Text="Öneriler — uygulanmadı, isterseniz yazın" FontSize="10"
+                                                       FontWeight="SemiBold" Foreground="#1F3864" Margin="0,0,0,3"/>
+                                            <ItemsControl ItemsSource="{Binding Suggestions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Margin="0,0,0,4">
+                                                            <TextBlock Text="{Binding Text}" FontSize="11"
+                                                                       TextWrapping="Wrap" Foreground="#1F3864"/>
+                                                            <TextBlock Text="{Binding Reason}" FontSize="10"
+                                                                       TextWrapping="Wrap" Foreground="#5B6B86"
+                                                                       FontStyle="Italic"/>
+                                                            <TextBlock Text="{Binding TargetText}" FontSize="9"
+                                                                       Foreground="#8894A8"
+                                                                       Visibility="{Binding TargetText, Converter={StaticResource NullToCollapsed}}"/>
+                                                        </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>

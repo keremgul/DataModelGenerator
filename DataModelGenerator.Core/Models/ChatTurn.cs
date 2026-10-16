@@ -1,5 +1,22 @@
 namespace DataModelGenerator.Core.Models;
 
+/// <summary>
+/// Sohbetin modele değil kullanıcıya dönük önerisi. Bir tekliftir: kullanıcı
+/// istemeden modele uygulanmaz.
+/// </summary>
+public class ChatSuggestion
+{
+    public string Text { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public List<string> RelatedEntities { get; set; } = new();
+
+    public string TargetText => RelatedEntities.Count > 0
+        ? string.Join(", ", RelatedEntities)
+        : string.Empty;
+
+    public override string ToString() => Text;
+}
+
 public enum ChatTurnStatus
 {
     Applied,
@@ -26,6 +43,14 @@ public class ChatTurn
 
     /// <summary>Uygulanamayan direktifler ve nedenleri.</summary>
     public List<string> NotApplied { get; set; } = new();
+
+    /// <summary>Modelin bu tur için kullanıcıya yazdığı yanıt.</summary>
+    public string Reply { get; set; } = string.Empty;
+
+    /// <summary>Modelin güncel haline bakarak sunulan, henüz uygulanmamış teklifler.</summary>
+    public List<ChatSuggestion> Suggestions { get; set; } = new();
+
+    public bool HasSuggestions => Suggestions.Count > 0;
 
     public string StatusText => Status switch
     {

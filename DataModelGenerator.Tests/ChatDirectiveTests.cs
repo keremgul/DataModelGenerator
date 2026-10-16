@@ -64,8 +64,8 @@ public class ChatDirectiveTests
         Assert.DoesNotContain("gaps", provider.Stages);
         Assert.DoesNotContain("questions", provider.Stages);
 
-        // Geriye yalnızca özet/öneri tazelemesi kalır.
-        Assert.Equal(["summary"], provider.Stages);
+        // Geriye yalnızca kullanıcıya yazılan yanıt ve özet/öneri tazelemesi kalır.
+        Assert.Equal(["chat", "summary"], provider.Stages);
         Assert.Contains(context.Model.FindEntity("Sipariş")!.Attributes,
             a => a.TechnicalName == "NetTutar");
     }

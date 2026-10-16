@@ -11,6 +11,7 @@ ve `{{SOURCE_RULES}}` her dosyada otomatik olarak genişler.
 |---|---|---|
 | `analyze-br-relations.md` | Üretimin 1. adımı: kurallar arası semantik ilişki | ✔ |
 | `router.md` | Sohbet mesajını yapılandırılmış direktiflere çevirir | ✔ (kalıp eşleşirse hiç çağrılmaz) |
+| `chat.md` | Tur uygulandıktan sonra kullanıcıya yanıt ve öneri yazar | ✔ |
 | `add-field.md` | `add-field` direktifi | ✔ |
 | `add-entity.md` | `add-entity` direktifi | ✔ |
 | `add-relation.md` | `add-relation` direktifi | ✔ |

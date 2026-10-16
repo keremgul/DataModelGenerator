@@ -41,9 +41,50 @@ const attributes = JSON.stringify({
   ]
 });
 
+// Router mesajı ayrıştırıp direktif üretir — gerçek bir modelin yapacağı iş.
+function route(systemPrompt) {
+  const m = /### MESSAGE\n([\s\S]*)$/.exec(systemPrompt);
+  const message = (m ? m[1] : '').toLowerCase();
+
+  if (message.includes('vergi')) {
+    return JSON.stringify({
+      directives: [{ operation: 'add-field', entity: 'Müşteri', newName: 'Vergi No' }],
+      unsupported: []
+    });
+  }
+  if (message.includes('kaldır') && message.includes('vergi')) {
+    return JSON.stringify({
+      directives: [{ operation: 'remove-field', entity: 'Müşteri', field: 'VergiNo' }],
+      unsupported: []
+    });
+  }
+  return JSON.stringify({ directives: [], unsupported: [] });
+}
+
 const routes = [
-  ['Direktif Yönlendirici', JSON.stringify({ directives: [], unsupported: [] })],
-  ['Skill: Alan Ekle', JSON.stringify({ entities: [], relationships: [], notes: [] })],
+  ['Skill: Sohbet Yanıtı', JSON.stringify({
+    reply: 'İstediğin değişikliği uyguladım; modelin güncel hali sağdaki diyagramda.',
+    suggestions: [
+      {
+        text: 'Sipariş tablosuna SiparisTarihi alanı eklenebilir',
+        reason: 'Siparişin ne zaman oluştuğu hiçbir alanda tutulmuyor',
+        relatedEntities: ['Sipariş']
+      },
+      {
+        text: 'Müşteri.Unvan alanının zorunlu olup olmadığı netleştirilebilir',
+        reason: 'Kurallarda zorunluluk bilgisi geçmiyor',
+        relatedEntities: ['Müşteri']
+      }
+    ]
+  })],
+  ['Direktif Yönlendirici', route],
+  ['Skill: Alan Ekle', JSON.stringify({
+    entities: [{
+      name: 'Müşteri',
+      attributes: [{ name: 'Vergi No', sources: ['CHAT-1'], confidence: 'kesin' }]
+    }],
+    relationships: [], notes: []
+  })],
   ['DEĞİŞTİRİLECEK KAPSAM', JSON.stringify({ entities: [], relationships: [], notes: [] })],
   ['Business Rule İlişki Analizi', JSON.stringify({
     relations: [{ first: 'BR-01', second: 'BR-02', kind: 'detaylandirir', explanation: 'BR-02 müşteriyi sipariş bağlamında detaylandırıyor' }]
@@ -84,7 +125,9 @@ const server = http.createServer((req, res) => {
     try { systemPrompt = JSON.parse(body).system_prompt || ''; } catch { /* yok say */ }
 
     const hit = routes.find(([marker]) => systemPrompt.includes(marker));
-    const message = hit ? hit[1] : '{}';
+    const message = hit
+      ? (typeof hit[1] === 'function' ? hit[1](systemPrompt) : hit[1])
+      : '{}';
     console.log(`${hit ? hit[0] : 'BILINMEYEN'} -> ${message.length} bayt`);
 
     res.writeHead(200, { 'Content-Type': 'application/json' });

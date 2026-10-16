@@ -17,6 +17,7 @@ public partial class ChatTurnItem : ObservableObject
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private string _statusColor = "#2E7D32";
     [ObservableProperty] private string _changeSummary = string.Empty;
+    [ObservableProperty] private string _reply = string.Empty;
 
     /// <summary>Talebin çevrildiği yapılandırılmış direktifler.</summary>
     public ObservableCollection<string> Directives { get; } = new();
@@ -27,8 +28,13 @@ public partial class ChatTurnItem : ObservableObject
     /// <summary>Uygulanamayan direktifler ve gerekçeleri.</summary>
     public ObservableCollection<string> Problems { get; } = new();
 
+    /// <summary>Modelin sunduğu, henüz uygulanmamış teklifler.</summary>
+    public ObservableCollection<ChatSuggestion> Suggestions { get; } = new();
+
     public bool HasProblems => Problems.Count > 0;
     public bool HasChanges => Changes.Count > 0;
+    public bool HasReply => !string.IsNullOrWhiteSpace(Reply);
+    public bool HasSuggestions => Suggestions.Count > 0;
 }
 
 /// <summary>
@@ -95,7 +101,8 @@ public partial class ChatViewModel : ObservableObject, IRefreshable
                 ChatTurnStatus.PartiallyApplied => "#B36B00",
                 _ => "#B3261E"
             },
-            ChangeSummary = $"{turn.Changes.TotalChanges} değişiklik"
+            ChangeSummary = $"{turn.Changes.TotalChanges} değişiklik",
+            Reply = turn.Reply
         };
 
         foreach (var directive in turn.Directives)
@@ -106,6 +113,7 @@ public partial class ChatViewModel : ObservableObject, IRefreshable
 
         foreach (var problem in turn.NotApplied) item.Problems.Add(problem);
         foreach (var unsupported in turn.Unsupported) item.Problems.Add($"Anlaşılmadı: {unsupported}");
+        foreach (var suggestion in turn.Suggestions) item.Suggestions.Add(suggestion);
 
         return item;
     }

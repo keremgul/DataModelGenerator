@@ -25,8 +25,80 @@ public static class ModelMerger
         existing.ConfidenceReason = entity.ConfidenceReason;
         existing.SourceRuleIds = MergeIds(existing.SourceRuleIds, entity.SourceRuleIds);
 
-        if (entity.Attributes.Count > 0)
-            existing.Attributes = entity.Attributes;
+        MergeAttributes(existing, entity.Attributes);
+    }
+
+    /// <summary>
+    /// Alanlar toplanarak birleştirilir, baştan yazılmaz. Model yanıtı çoğu zaman
+    /// yalnızca değişen alanı içerir; listeyi olduğu gibi kabul etmek daha önce
+    /// eklenmiş alanların sessizce kaybolmasına yol açıyordu. Silme yalnızca
+    /// <see cref="RemoveAttributes"/> ile, modelin açıkça bildirmesi üzerine yapılır.
+    /// </summary>
+    public static void MergeAttributes(ModelEntity target, IReadOnlyList<EntityAttribute> incoming)
+    {
+        foreach (var attribute in incoming)
+        {
+            var existing = FindAttribute(target, attribute.TechnicalName)
+                           ?? FindAttribute(target, attribute.Name);
+
+            if (existing is null)
+            {
+                target.Attributes.Add(attribute);
+                continue;
+            }
+
+            existing.Name = attribute.Name;
+            existing.TechnicalName = attribute.TechnicalName;
+            existing.IsPrimaryKey = attribute.IsPrimaryKey || existing.IsPrimaryKey;
+            existing.IsForeignKey = attribute.IsForeignKey || existing.IsForeignKey;
+            existing.IsRequired = attribute.IsRequired;
+            existing.IsUnique = attribute.IsUnique || existing.IsUnique;
+            existing.Certainty = attribute.Certainty;
+            existing.Confidence = attribute.Confidence;
+
+            if (!string.IsNullOrWhiteSpace(attribute.ConfidenceReason))
+                existing.ConfidenceReason = attribute.ConfidenceReason;
+            if (!string.IsNullOrWhiteSpace(attribute.ReferencesEntity))
+                existing.ReferencesEntity = attribute.ReferencesEntity;
+            if (!string.IsNullOrWhiteSpace(attribute.ReferencesAttribute))
+                existing.ReferencesAttribute = attribute.ReferencesAttribute;
+
+            existing.SourceRuleIds = MergeIds(existing.SourceRuleIds, attribute.SourceRuleIds);
+        }
+    }
+
+    /// <summary>
+    /// Modelin açıkça bildirdiği alanları kaldırır. Birincil anahtar kaldırılmaz:
+    /// her tabloda bir anahtar bulunmak zorundadır.
+    /// </summary>
+    public static List<string> RemoveAttributes(DataModel model,
+        IEnumerable<(string Entity, string Field)> targets)
+    {
+        var removed = new List<string>();
+
+        foreach (var (entityName, fieldName) in targets)
+        {
+            var entity = model.FindEntity(entityName);
+            var attribute = entity is null ? null : FindAttribute(entity, fieldName);
+
+            if (entity is null || attribute is null || attribute.IsPrimaryKey) continue;
+
+            entity.Attributes.Remove(attribute);
+            removed.Add($"{entity.Name}.{attribute.TechnicalName}");
+        }
+
+        return removed;
+    }
+
+    private static EntityAttribute? FindAttribute(ModelEntity entity, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+
+        return entity.Attributes.FirstOrDefault(a =>
+            a.TechnicalName.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+            a.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+            NamingRules.ToTechnicalName(a.Name)
+                .Equals(NamingRules.ToTechnicalName(name), StringComparison.OrdinalIgnoreCase));
     }
 
     public static void UpsertRelationship(DataModel model, Relationship relationship)

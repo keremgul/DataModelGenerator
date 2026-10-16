@@ -229,6 +229,9 @@ public class ModelPipeline
         turn.Changes = ModelChangeSet.Compare(before, context.Model);
         turn.Status = DetermineStatus(turn);
 
+        progress?.Report("Yanıt hazırlanıyor…");
+        await WriteChatReplyAsync(context, turn, ct);
+
         var package = await SerializeAsync(context, progress, ct);
         package.LastChatTurn = turn;
         return (package, turn);
@@ -251,6 +254,71 @@ public class ModelPipeline
             ? ChatTurnStatus.PartiallyApplied
             : ChatTurnStatus.Applied;
     }
+
+    /// <summary>
+    /// Tur uygulandıktan sonra kullanıcıya yazılan yanıt ve öneriler. Yanıt
+    /// modelin beyanına değil gerçek diff'e dayandırılır; öneriler teklif olarak
+    /// kalır, kullanıcı istemeden modele uygulanmaz. Bu adım başarısız olsa bile
+    /// turun kendisi geçerlidir.
+    /// </summary>
+    private async Task WriteChatReplyAsync(PipelineContext context, ChatTurn turn, CancellationToken ct)
+    {
+        if (!_skills.Exists("chat"))
+        {
+            turn.Reply = turn.Changes.Describe();
+            return;
+        }
+
+        var prompt = _skills.Render("chat", new Dictionary<string, string>
+        {
+            ["MESSAGE"] = turn.UserMessage,
+            ["DIFF"] = turn.Changes.IsEmpty ? "(modelde hiçbir değişiklik olmadı)" : turn.Changes.Describe(),
+            ["NOT_APPLIED"] = turn.NotApplied.Count == 0
+                ? "(uygulanamayan bir şey yok)"
+                : string.Join("\n", turn.NotApplied.Select(text => $"- {text}")),
+            ["MODEL"] = FormatModelOutline(context.Model),
+            ["PENDING"] = FormatPendingItems(context.PendingItems)
+        });
+
+        JsonNode response;
+        try
+        {
+            response = await _llm.SendAsync(PipelineStage.Serialization, prompt, ct);
+        }
+        catch (PipelineException)
+        {
+            // Yanıt üretilemezse turun sonucu yine de gösterilir.
+            turn.Reply = turn.Changes.Describe();
+            return;
+        }
+
+        var reply = response.Str("reply").Trim();
+        turn.Reply = string.IsNullOrWhiteSpace(reply) ? turn.Changes.Describe() : reply;
+
+        foreach (var node in response.Array("suggestions"))
+        {
+            var text = node.Str("text").Trim();
+            if (string.IsNullOrWhiteSpace(text)) continue;
+
+            // Var olmayan tabloya atıf yapan öneri gösterilmez.
+            var related = node.StrList("relatedEntities")
+                .Where(name => context.Model.FindEntity(name) is not null)
+                .ToList();
+
+            turn.Suggestions.Add(new ChatSuggestion
+            {
+                Text = text,
+                Reason = node.Str("reason").Trim(),
+                RelatedEntities = related
+            });
+        }
+    }
+
+    private static string FormatPendingItems(IReadOnlyList<PendingItem> pending) =>
+        pending.Count == 0
+            ? "(beklemede öğe yok)"
+            : string.Join("\n", pending.Select(item =>
+                $"- [{item.ReasonText}] {item.Target}: {item.Explanation}"));
 
     private async Task<List<ChatDirective>> RouteAsync(PipelineContext context, string message,
         ChatTurn turn, CancellationToken ct)
@@ -322,9 +390,38 @@ public class ModelPipeline
         _ => DirectiveOperation.General
     };
 
-    private static string FormatModelOutline(DataModel model) =>
-        string.Join("\n", model.Entities.Select(e =>
-            $"- {e.Name} ({e.TechnicalName}): {string.Join(", ", e.Attributes.Select(a => a.TechnicalName))}"));
+    /// <summary>
+    /// Modelin güncel hali. Kullanıcı bir alana teknik adıyla da görünen adıyla da
+    /// atıfta bulunabildiği için ikisi birlikte verilir; anahtar bilgisi de
+    /// eklenir ki model kaldırılamayacak alanları önceden bilsin.
+    /// </summary>
+    private static string FormatModelOutline(DataModel model)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var entity in model.Entities)
+        {
+            sb.AppendLine($"- Tablo: {entity.Name} (teknik ad: {entity.TechnicalName})");
+
+            foreach (var attribute in entity.Attributes)
+            {
+                var marks = attribute.IsPrimaryKey ? " [PK]"
+                    : attribute.IsForeignKey ? $" [FK → {attribute.ReferencesEntity}]"
+                    : string.Empty;
+
+                var display = attribute.Name.Equals(attribute.TechnicalName, StringComparison.Ordinal)
+                    ? attribute.TechnicalName
+                    : $"{attribute.Name} (teknik ad: {attribute.TechnicalName})";
+
+                sb.AppendLine($"    - {display}{marks}");
+            }
+        }
+
+        foreach (var relationship in model.Relationships)
+            sb.AppendLine($"- İlişki: {relationship.FromEntity} → {relationship.ToEntity} ({relationship.Cardinality})");
+
+        return sb.Length == 0 ? "(model boş)" : sb.ToString().TrimEnd();
+    }
 
     /// <summary>
     /// Serbest reprompt: yalnızca ilgili varlık/ilişki context'i ve değişiklik talebi
@@ -461,11 +558,20 @@ public class ModelPipeline
                 .Where(pair => !string.IsNullOrWhiteSpace(pair.From) && !string.IsNullOrWhiteSpace(pair.To))
                 .ToList());
 
+        // Alanlar da yalnızca açıkça bildirildiğinde silinir; dönmeyen alan korunur.
+        var removedFields = ModelMerger.RemoveAttributes(context.Model,
+            response.Array("removedFields")
+                .Select(node => (Entity: node.Str("entity"), Field: node.Str("field")))
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Entity) && !string.IsNullOrWhiteSpace(pair.Field))
+                .ToList());
+
         var removed = ModelMerger.RemoveEntities(context.Model, response.StrList("removedEntities"));
 
         context.RepromptNotes.Clear();
         if (removed.Count > 0)
             context.RepromptNotes.Add($"Modelden kaldırılan varlıklar: {string.Join(", ", removed)}");
+        if (removedFields.Count > 0)
+            context.RepromptNotes.Add($"Kaldırılan alanlar: {string.Join(", ", removedFields)}");
         if (removedRelationships.Count > 0)
             context.RepromptNotes.Add($"Kaldırılan ilişkiler: {string.Join(", ", removedRelationships)}");
 

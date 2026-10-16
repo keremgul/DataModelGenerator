@@ -149,6 +149,11 @@ flowchart TD
     DF -- "bazı direktifler başarısız" --> PA["⚠ Kısmen uygulandı<br/>uygulanan/uygulanmayan ayrı listelenir"]:::pending
     DF -- "fark var" --> OK["✓ Uygulandı<br/>gerçek diff gösterilir"]:::code
 
+    NA --> CH
+    PA --> CH
+    OK --> CH["skills/chat.md<br/>girdi: gerçek diff + uygulanmayanlar<br/>+ güncel model + beklemede<br/>çıktı: yanıt + öneriler"]:::llm
+    CH --> SG["Öneriler teklif olarak gösterilir<br/>kullanıcı istemeden uygulanmaz"]:::code
+
     classDef llm fill:#E8EFFB,stroke:#2F5496,color:#1F3864
     classDef code fill:#EBF5E8,stroke:#6C8256,color:#2C4218
     classDef guard fill:#FFF8E1,stroke:#E0C97F,color:#5F4B00
@@ -157,6 +162,20 @@ flowchart TD
 
 Mesaj kural listesine `CHAT-xx` olarak eklenir; o turda modele giren her öğe bu
 kimliği kaynak olarak taşır ve izlenebilirlik tablosunda görünür.
+
+### Alanlar neden baştan yazılmaz
+
+Model yanıtı çoğu zaman yalnızca **değişen** alanı içerir. Gelen listeyi varlığın
+yeni tam hali saymak, daha önce eklenmiş alanların sessizce kaybolmasına yol
+açıyordu — sohbetin kendi eklediği alanı bir sonraki turda bulamamasının nedeni
+buydu. Artık alanlar `ModelMerger.MergeAttributes` ile toplanarak birleştirilir;
+silme yalnızca modelin açıkça bildirdiği `removedFields` listesiyle yapılır ve
+birincil anahtar bu listede olsa bile kaldırılmaz. Aynı ilke varlık ve
+ilişkilerde zaten geçerliydi.
+
+Router'a giden model özeti her alanı **hem görünen hem teknik adıyla** ve PK/FK
+işaretleriyle verir; kullanıcı alana hangi adla atıfta bulunursa bulunsun
+eşleşme sağlanır.
 
 ## Kısmi yeniden çalıştırma
 

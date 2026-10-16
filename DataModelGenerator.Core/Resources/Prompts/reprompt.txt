@@ -14,10 +14,12 @@ KULLANICININ DEĞİŞİKLİK TALEBİ:
 {{REQUEST}}
 
 GÖREV:
-- **Yalnızca DEĞİŞEN varlıkları ve ilişkileri döndür.** Çıktıda yer almayan varlık ve ilişkiler olduğu gibi korunur — dokunmadığın hiçbir şey silinmez.
-- Değiştirdiğin bir varlığı tüm alanlarıyla döndür (yalnızca değişen alanları değil); çıktı o varlığın yeni tam hali olarak kullanılacak.
+- **Yalnızca DEĞİŞEN varlıkları, alanları ve ilişkileri döndür.** Çıktıda yer almayan hiçbir şey silinmez; dokunmadığın her şey olduğu gibi korunur.
+- Bir varlığı tüm alanlarıyla döndürmen gerekmez: döndürdüğün alanlar mevcut listeye eklenerek birleştirilir, yazmadığın alanlar korunur.
+- **Silmek istediğin alanları "removedFields" listesine {"entity": "...", "field": "..."} olarak yaz.** Alanı çıktıdan çıkarmak silme anlamına GELMEZ.
 - **Silmek istediğin varlıkları "removedEntities" listesine adlarıyla yaz.** Sadece çıktıdan çıkarmak silme anlamına GELMEZ.
 - **Silmek istediğin ilişkileri "removedRelationships" listesine {"from": "...", "to": "..."} olarak yaz.** İlişkiler başka türlü kaldırılmaz.
+- Birincil anahtar kaldırılamaz; her tabloda bir anahtar bulunmak zorundadır.
 - Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür.
 - KAPSAM belirli varlıkları listeliyorsa yalnızca onları değiştir; başka bir varlıkta değişiklik gerekiyorsa bunu "notes" altında yaz. KAPSAM "TÜM MODEL" ise talimatı ilgili tüm varlıklara uygula.
 - Alanlar için veri tipi veya uzunluk verme; kavramsal modelde tip bilgisi tutulmaz.
@@ -59,6 +61,7 @@ GÖREV:
       "confidenceReason": "..."
     }
   ],
+  "removedFields": [{ "entity": "Müşteri", "field": "FaksNo" }],
   "removedEntities": ["Eski Varlık Adı"],
   "removedRelationships": [{ "from": "Müşteri", "to": "Adres" }],
   "notes": ["Ürün varlığı kapsam dışında olduğu için değiştirilmedi"]

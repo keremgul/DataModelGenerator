@@ -151,6 +151,17 @@ Invoke-Named "Gönder"
 Start-Sleep -Seconds 5
 Save-Shot "flow-8-sohbet"
 
+# Sohbet modelin güncel halini biliyor mu: alan ekle, sonra aynı alanı kaldır.
+Set-Text (Find-By "SohbetMesaji") "Musteri tablosuna vergi numarasi alani ekle"
+Invoke-Named "Gönder"
+Start-Sleep -Seconds 5
+Save-Shot "flow-8b-alan-eklendi"
+
+Set-Text (Find-By "SohbetMesaji") "Musteri tablosundan VergiNo alanini kaldir"
+Invoke-Named "Gönder"
+Start-Sleep -Seconds 5
+Save-Shot "flow-8c-alan-kaldirildi"
+
 # --- 6. Adim gostergesi -----------------------------------------------------
 Click-Step 5
 Start-Sleep -Milliseconds 800
