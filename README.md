@@ -1,8 +1,14 @@
 # Veri Modeli Generator
 
-Bir konu ve business rule listesi girildiğinde yapay zeka destekli **kavramsal/mantıksal veri modeli** üreten bağımsız Windows masaüstü uygulaması (.NET 8 / WPF).
+Business rule listesi girildiğinde yapay zeka destekli **kavramsal/mantıksal veri modeli** üreten bağımsız Windows masaüstü uygulaması (.NET 8 / WPF).
 
 Uygulama hiçbir veritabanına bağlanmaz; tüm çıktılar dosya bazlıdır.
+
+**Halüsinasyon yasağı:** Modele giren her varlık, alan ve ilişki en az bir kaynağa
+(`BR-xx`, `Q-xx` veya `CHAT-xx`) bağlıdır. Kaynağı olmayan, belirsiz işaretlenmiş
+veya normalizasyon kurallarını geçemeyen hiçbir öğe modele alınmaz; "beklemede"
+listesine düşer ve size soru olarak döner. Bu denetim prompt talimatına değil,
+kod tarafındaki süzgece dayanır.
 
 ## Çalıştırma
 
@@ -12,7 +18,7 @@ Uygulama hiçbir veritabanına bağlanmaz; tüm çıktılar dosya bazlıdır.
 2. Bir klasöre çıkarın — kurulum yoktur.
 3. `DataModelGenerator.exe` dosyasını çalıştırın.
 
-**Gereksinim:** Windows 10/11 x64. .NET kurulumu gerekmez (self-contained). ER diyagramı için WebView2 çalışma zamanı kullanılır; Windows 11'de hazır gelir. Yoksa yalnızca diyagram sekmesi uyarı gösterir, Mermaid kodu ve tüm dışa aktarımlar çalışmaya devam eder.
+**Gereksinim:** Windows 10/11 x64. .NET kurulumu gerekmez (self-contained). ER diyagramı için WebView2 çalışma zamanı kullanılır; Windows 11'de hazır gelir. Yoksa yalnızca diyagram sekmesi uyarı gösterir, modelin kendisi ve tüm dışa aktarımlar çalışmaya devam eder.
 
 ### Kaynak koddan çalıştır
 
@@ -43,19 +49,25 @@ Komut `publish/DataModelGenerator-vX.Y.Z-win-x64/` klasörünü ve aynı adlı z
 ## Kullanım akışı
 
 1. **Bağlantı** — Sağlayıcı seçin (OpenAI, Anthropic, Google Gemini, Azure OpenAI, Ollama, özel endpoint), hazır listeden model seçin veya adını yazın, API anahtarını girin ve "Bağlantıyı Test Et" ile doğrulayın. Test başarılı olunca profil kaydedilebilir.
-2. **Girdi** — Konu, opsiyonel kapsam, business rule listesi (madde madde veya serbest metin yapıştırıp ayrıştırarak) ve opsiyonel terim sözlüğü.
-3. **Üretim** — Yedi adımlı zincir çalışır; model, özet, öneriler, izlenebilirlik tablosu, belirsizlikler ve doğrulama sonuçları sekmelerde görüntülenir.
-4. **Sorular** — Yüksek etkili belirsizlikler için üretilen soruları cevaplayın; model yalnızca etkilenen adımdan itibaren kısmen güncellenir. Döngü en fazla 3 turla sınırlıdır; uygulanan sorular ✓ ile geçmişte kalır.
-5. **Reprompt** — Seçtiğiniz varlıklar için serbest değişiklik talebi gönderin; yalnızca o varlıkların context'i modele iletilir. Bir varlığı silmek için onu kapsama ekleyip kaldırılmasını isteyin.
+2. **Girdi** — Numaralı business rule listesi (tek tek ya da serbest metin yapıştırıp ayrıştırarak). Kurallar satır satır değil, aralarındaki anlam ilişkisiyle birlikte değerlendirilir; çelişen veya tekrar eden kurallar size soru olarak döner.
+3. **Üretim** — Sekiz adımlı zincir çalışır (bkz. [docs/pipeline.md](docs/pipeline.md)). Sonuçlar sekmelerde görünür: ER diyagramı, özet (izlenebilirlik tablosu), beklemede, öneriler, belirsizlikler, doğrulama.
+4. **Sorular** — Belirsizlikler ve beklemede listesi için üretilen soruları cevaplayın. Önerilen cevaplar kopyalanabilir ve tek tıkla kullanılabilir; model yalnızca etkilenen adımdan itibaren kısmen güncellenir. Cevabınız bağlayıcı kısıttır ve modelde karşılık bulup bulmadığı denetlenir.
+5. **Sohbet** — Modelde ne değişsin, yazın. Talep yapılandırılmış direktiflere çevrilir; yeniden adlandırma ve kaldırma gibi işlemler LLM'e hiç gitmeden doğrudan uygulanır. Sonuç modelin "yaptım" demesiyle değil, **önceki ve sonraki hali arasındaki gerçek diff** ile doğrulanır.
 6. **Dışa aktarma** — Mermaid kodu (.mmd), model JSON'u ve örnek veri simülasyonu (her varlık ayrı sekme olacak şekilde .xlsx).
+
+Üstteki adım göstergesi hangi adımın tamamlandığını (✓) ve geri dönüp bir şey değiştirdiğinizde hangi adımın **güncel olmadığını** (!) gösterir. Sonraki adımların çıktısı silinmez, yalnızca işaretlenir.
 
 ## Mimari
 
-- **DataModelGenerator.Core** — Pipeline (varlık çıkarımı → ilişki/kardinalite → alan/tip türetimi → normalizasyon denetimi → belirsizlik tespiti → soru üretimi → çıktı üretimi), deterministik kural motoru (adlandırma, tip eşlemesi, anahtar tamamlama), doğrulama katmanı, sağlayıcı soyutlaması, örnek veri üretimi ve dışa aktarma.
+- **DataModelGenerator.Core** — Pipeline (kural ilişki analizi → varlık çıkarımı → ilişki/kardinalite → alan türetimi → normalizasyon → belirsizlik tespiti → soru üretimi → çıktı üretimi), halüsinasyon süzgeci (`SourceGuard`), normalizasyon motoru, deterministik kural motoru (adlandırma, anahtar tamamlama, ara tablo), doğrulama katmanı, sağlayıcı soyutlaması, örnek veri üretimi ve dışa aktarma.
 - **DataModelGenerator.App** — WPF / MVVM arayüz.
 - **DataModelGenerator.Tests** — xUnit testleri.
 
-LLM çıktısı "öneri", kod doğrulaması "gerçeklik kontrolü" olarak konumlanır: isim çakışması, karşılığı olmayan FK/PK, döngüsel referans ve eksik zorunlu alanlar mekanik olarak yakalanır. Her varlık ve alan, türediği business rule ID'sine geri izlenebilir.
+LLM çıktısı "öneri", kod doğrulaması "gerçeklik kontrolü" olarak konumlanır: isim çakışması, karşılığı olmayan FK/PK, döngüsel referans ve eksik zorunlu alanlar mekanik olarak yakalanır. Her varlık ve alan, türediği kural kimliğine geri izlenebilir — özet sekmesindeki izlenebilirlik tablosundan hem alandan kaynağa hem kaynaktan alanlara gezilebilir.
+
+### Skill dosyaları
+
+`skills/` klasöründeki düz metin dosyaları exe'nin yanında gelir ve yeniden derlemeden düzenlenebilir. Sohbetten gelen talep önce kalıp eşleştirmeyle, eşleşme yoksa `router.md` ile yapılandırılmış bir direktife çevrilir; üretim gerektiren işlemler kendi skill dosyasıyla ve yalnızca ilgili varlıkların context'iyle çalışır. `NORMALIZATION_RULES.md` ve `normalize.md` kod tarafında işletilen NF kurallarını belgeler.
 
 Model **kavramsaldır**: varlık, ilişki, alan ve anahtar bilgisi tutar; veri tipi ve uzunluk tutmaz — bunlar fiziksel tasarımda, somut ihtiyaca göre belirlenir.
 
@@ -67,5 +79,6 @@ Model **kavramsaldır**: varlık, ilişki, alan ve anahtar bilgisi tutar; veri t
 | API anahtarları (Windows DPAPI ile şifreli) | `%AppData%\DataModelGenerator\keys.dat` |
 | API ve hata logları | exe'nin yanında `logs\` |
 | Prompt şablonları | exe'nin yanında `Resources\Prompts\*.txt` |
+| Skill dosyaları | exe'nin yanında `skills\*.md` |
 
-Prompt dosyalarını düzenlerseniz exe'ye gömülü sürümün yerine geçerler; yeniden derleme gerekmez. API anahtarları kullanıcıya ve makineye özel şifrelendiği için paketle taşınmaz, her makinede bir kez girilir.
+Prompt ve skill dosyalarını düzenlerseniz exe'ye gömülü sürümün yerine geçerler; yeniden derleme gerekmez. API anahtarları kullanıcıya ve makineye özel şifrelendiği için paketle taşınmaz, her makinede bir kez girilir.
