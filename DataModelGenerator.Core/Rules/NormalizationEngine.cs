@@ -75,7 +75,7 @@ public class NormalizationEngine
                 {
                     Kind = PendingItemKind.Attribute,
                     Reason = PendingReason.NormalizationBlocked,
-                    Target = $"{entity.Name}.{attribute.Name}",
+                    Target = $"{entity.TechnicalName}.{attribute.TechnicalName}",
                     ViolatedRule = result.ViolatedRule,
                     Explanation = result.Explanation,
                     SourceRuleIds = new List<string>(attribute.SourceRuleIds),
@@ -108,7 +108,7 @@ public class NormalizationEngine
 
             results.Add(new NormalizationResult
             {
-                Entity = entity.Name,
+                Entity = entity.TechnicalName,
                 Attribute = "(birincil anahtar)",
                 AppliedRules = { "PK-1", "PK-2", "1NF-4", "BCNF-1" },
                 Outcome = corrected ? NormalizationOutcome.Decomposed : NormalizationOutcome.Passed,
@@ -121,22 +121,22 @@ public class NormalizationEngine
 
         results.Add(new NormalizationResult
         {
-            Entity = entity.Name,
+            Entity = entity.TechnicalName,
             Attribute = "(birincil anahtar)",
             AppliedRules = { "PK-1", "PK-2", "1NF-4" },
             Outcome = NormalizationOutcome.Blocked,
             ViolatedRule = "PK-1",
-            Explanation = $"'{entity.Name}' tablosunun birincil anahtarı belirlenemedi."
+            Explanation = $"'{entity.TechnicalName}' tablosunun birincil anahtarı belirlenemedi."
         });
 
         pending.Add(new PendingItem
         {
             Kind = PendingItemKind.Entity,
             Reason = PendingReason.NormalizationBlocked,
-            Target = entity.Name,
+            Target = entity.TechnicalName,
             ViolatedRule = "PK-1",
-            Explanation = $"'{entity.Name}' tablosunun birincil anahtarı yok.",
-            Question = $"'{entity.Name}' tablosunda kayıtları tekil olarak ne ayırt ediyor?",
+            Explanation = $"'{entity.TechnicalName}' tablosunun birincil anahtarı yok.",
+            Question = $"'{entity.TechnicalName}' tablosunda kayıtları tekil olarak ne ayırt ediyor?",
             SuggestedAnswers = ["ID alanı eklensin", "Mevcut bir alan tekil anahtar olsun"]
         });
     }
@@ -161,12 +161,12 @@ public class NormalizationEngine
 
         results.Add(new NormalizationResult
         {
-            Entity = entity.Name,
+            Entity = entity.TechnicalName,
             Attribute = "(bileşik anahtar)",
             AppliedRules = { "2NF-1", "2NF-2", "BCNF-1", "BCNF-2" },
             Outcome = NormalizationOutcome.Blocked,
             ViolatedRule = "2NF-2",
-            Explanation = $"'{entity.Name}' bileşik anahtarlı; anahtar olmayan alanların anahtarın " +
+            Explanation = $"'{entity.TechnicalName}' bileşik anahtarlı; anahtar olmayan alanların anahtarın " +
                           "tamamına mı yoksa bir parçasına mı bağlı olduğu kurallardan çıkarılamıyor."
         });
 
@@ -174,12 +174,12 @@ public class NormalizationEngine
         {
             Kind = PendingItemKind.Entity,
             Reason = PendingReason.NormalizationBlocked,
-            Target = entity.Name,
+            Target = entity.TechnicalName,
             ViolatedRule = "2NF-2",
-            Explanation = $"'{entity.Name}' tablosunda bileşik anahtar var: " +
+            Explanation = $"'{entity.TechnicalName}' tablosunda bileşik anahtar var: " +
                           $"{string.Join(" + ", keys.Select(k => k.TechnicalName))}. " +
                           $"Anahtar olmayan alanlar: {string.Join(", ", dependents)}.",
-            Question = $"'{entity.Name}' tablosundaki alanlar bileşik anahtarın tamamına mı bağlı?",
+            Question = $"'{entity.TechnicalName}' tablosundaki alanlar bileşik anahtarın tamamına mı bağlı?",
             SuggestedAnswers =
             [
                 "Tamamına bağlı — olduğu gibi kalsın",
@@ -218,27 +218,27 @@ public class NormalizationEngine
             entity.Attributes.Remove(dependent);
             results.Add(new NormalizationResult
             {
-                Entity = entity.Name,
-                Attribute = dependent.Name,
+                Entity = entity.TechnicalName,
+                Attribute = dependent.TechnicalName,
                 AppliedRules = { "3NF-1", "3NF-2" },
                 Outcome = NormalizationOutcome.Blocked,
                 ViolatedRule = "3NF-2",
-                Explanation = $"'{dependent.Name}', anahtar olmayan '{determinant.Name}' alanına bağlı görünüyor."
+                Explanation = $"'{dependent.TechnicalName}', anahtar olmayan '{determinant.TechnicalName}' alanına bağlı görünüyor."
             });
 
             pending.Add(new PendingItem
             {
                 Kind = PendingItemKind.Attribute,
                 Reason = PendingReason.NormalizationBlocked,
-                Target = $"{entity.Name}.{dependent.Name}",
+                Target = $"{entity.TechnicalName}.{dependent.TechnicalName}",
                 ViolatedRule = "3NF-2",
-                Explanation = $"Geçişli bağımlılık: {entity.Name} anahtarı → {determinant.Name} → {dependent.Name}.",
+                Explanation = $"Geçişli bağımlılık: {entity.TechnicalName} anahtarı → {determinant.TechnicalName} → {dependent.TechnicalName}.",
                 SourceRuleIds = new List<string>(dependent.SourceRuleIds),
-                Question = $"'{dependent.Name}' bilgisi '{determinant.Name}' üzerinden mi belirleniyor? " +
+                Question = $"'{dependent.TechnicalName}' bilgisi '{determinant.TechnicalName}' üzerinden mi belirleniyor? " +
                            "Ayrı bir tabloda mı tutulmalı?",
                 SuggestedAnswers =
                 [
-                    $"Evet, ayrı tabloya taşınsın ve {determinant.Name} ile ilişkilendirilsin",
+                    $"Evet, ayrı tabloya taşınsın ve {determinant.TechnicalName} ile ilişkilendirilsin",
                     "Hayır, bağımsız bir alan — olduğu gibi kalsın"
                 ]
             });
@@ -355,8 +355,8 @@ public class NormalizationEngine
                 entity.Attributes.Remove(member.Attribute);
                 results.Add(new NormalizationResult
                 {
-                    Entity = entity.Name,
-                    Attribute = member.Attribute.Name,
+                    Entity = entity.TechnicalName,
+                    Attribute = member.Attribute.TechnicalName,
                     AppliedRules = { "1NF-2" },
                     Outcome = NormalizationOutcome.Blocked,
                     ViolatedRule = "1NF-2",
@@ -368,10 +368,10 @@ public class NormalizationEngine
             {
                 Kind = PendingItemKind.Attribute,
                 Reason = PendingReason.NormalizationBlocked,
-                Target = $"{entity.Name}.{group.Key}*",
+                Target = $"{entity.TechnicalName}.{group.Key}*",
                 ViolatedRule = "1NF-2",
                 Explanation = $"'{group.Key}1', '{group.Key}2' gibi tekrarlayan alanlar 1NF'i ihlal ediyor.",
-                Question = $"'{entity.Name}' tablosunda birden çok {group.Key} bilgisi ayrı bir tabloda mı tutulmalı?",
+                Question = $"'{entity.TechnicalName}' tablosunda birden çok {group.Key} bilgisi ayrı bir tabloda mı tutulmalı?",
                 SuggestedAnswers = [$"Evet, ayrı {group.Key} tablosu oluştur", "Hayır, tek bir alan yeterli"]
             });
         }
@@ -379,7 +379,7 @@ public class NormalizationEngine
 
     private static NormalizationResult CheckAttribute(ModelEntity entity, EntityAttribute attribute)
     {
-        var result = new NormalizationResult { Entity = entity.Name, Attribute = attribute.Name };
+        var result = new NormalizationResult { Entity = entity.TechnicalName, Attribute = attribute.TechnicalName };
         var folded = NamingRules.FoldTurkish(attribute.Name).ToLowerInvariant();
 
         // AD-1: anahtar alanlar model kuralından doğar; diğerlerinin kaynağı olmalı.
@@ -397,7 +397,7 @@ public class NormalizationEngine
         {
             result.Outcome = NormalizationOutcome.Blocked;
             result.ViolatedRule = "1NF-1";
-            result.Explanation = $"'{attribute.Name}' bileşik görünüyor; atomik alanlara ayrılmalı veya atomik olduğu teyit edilmeli.";
+            result.Explanation = $"'{attribute.TechnicalName}' bileşik görünüyor; atomik alanlara ayrılmalı veya atomik olduğu teyit edilmeli.";
             return result;
         }
 
@@ -406,7 +406,7 @@ public class NormalizationEngine
         {
             result.Outcome = NormalizationOutcome.Blocked;
             result.ViolatedRule = "1NF-3";
-            result.Explanation = $"'{attribute.Name}' çok değerli görünüyor; tek alanda liste tutulamaz.";
+            result.Explanation = $"'{attribute.TechnicalName}' çok değerli görünüyor; tek alanda liste tutulamaz.";
             return result;
         }
 
@@ -415,7 +415,7 @@ public class NormalizationEngine
         {
             result.Outcome = NormalizationOutcome.Blocked;
             result.ViolatedRule = "3NF-3";
-            result.Explanation = $"'{attribute.Name}' türetilebilir bir değer; saklanması gerekçelendirilmeli.";
+            result.Explanation = $"'{attribute.TechnicalName}' türetilebilir bir değer; saklanması gerekçelendirilmeli.";
             return result;
         }
 
@@ -428,7 +428,7 @@ public class NormalizationEngine
         {
             result.Outcome = NormalizationOutcome.Blocked;
             result.ViolatedRule = "REL-4";
-            result.Explanation = $"'{attribute.Name}' aynı bilgiyi tutan başka bir alanla çakışıyor.";
+            result.Explanation = $"'{attribute.TechnicalName}' aynı bilgiyi tutan başka bir alanla çakışıyor.";
             return result;
         }
 
@@ -450,8 +450,8 @@ public class NormalizationEngine
                 {
                     results.Add(new NormalizationResult
                     {
-                        Entity = entity.Name,
-                        Attribute = foreignKey.Name,
+                        Entity = entity.TechnicalName,
+                        Attribute = foreignKey.TechnicalName,
                         AppliedRules = { "REL-1" }
                     });
                     continue;
@@ -460,8 +460,8 @@ public class NormalizationEngine
                 entity.Attributes.Remove(foreignKey);
                 results.Add(new NormalizationResult
                 {
-                    Entity = entity.Name,
-                    Attribute = foreignKey.Name,
+                    Entity = entity.TechnicalName,
+                    Attribute = foreignKey.TechnicalName,
                     AppliedRules = { "REL-1" },
                     Outcome = NormalizationOutcome.Blocked,
                     ViolatedRule = "REL-1",
@@ -472,11 +472,11 @@ public class NormalizationEngine
                 {
                     Kind = PendingItemKind.Attribute,
                     Reason = PendingReason.NormalizationBlocked,
-                    Target = $"{entity.Name}.{foreignKey.Name}",
+                    Target = $"{entity.TechnicalName}.{foreignKey.TechnicalName}",
                     ViolatedRule = "REL-1",
                     Explanation = $"Yabancı anahtar '{foreignKey.ReferencesEntity}' tablosunu gösteriyor ama böyle bir tablo yok.",
                     SourceRuleIds = new List<string>(foreignKey.SourceRuleIds),
-                    Question = $"'{entity.Name}' tablosu hangi tabloyla ilişkili olmalı?",
+                    Question = $"'{entity.TechnicalName}' tablosu hangi tabloyla ilişkili olmalı?",
                     SuggestedAnswers = ["İlişki gerekli — hedef tabloyu belirteceğim", "İlişki gerekli değil"]
                 });
             }
@@ -486,11 +486,11 @@ public class NormalizationEngine
     private static string BuildQuestion(ModelEntity entity, EntityAttribute attribute, NormalizationResult result) =>
         result.ViolatedRule switch
         {
-            "1NF-1" => $"'{entity.Name}.{attribute.Name}' alanı tek bir değer mi tutuyor, yoksa parçalara ayrılmalı mı?",
-            "1NF-3" => $"'{entity.Name}.{attribute.Name}' alanında birden çok değer mi tutulacak? Ayrı tabloya alınmalı mı?",
-            "3NF-3" => $"'{entity.Name}.{attribute.Name}' hesaplanabilir bir değer. Yine de saklanmalı mı?",
-            "REL-4" => $"'{entity.Name}.{attribute.Name}' alanı başka bir alanla aynı bilgiyi tutuyor. Hangisi kalmalı?",
-            _ => $"'{entity.Name}.{attribute.Name}' alanı için ne yapılmalı?"
+            "1NF-1" => $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı tek bir değer mi tutuyor, yoksa parçalara ayrılmalı mı?",
+            "1NF-3" => $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanında birden çok değer mi tutulacak? Ayrı tabloya alınmalı mı?",
+            "3NF-3" => $"'{entity.TechnicalName}.{attribute.TechnicalName}' hesaplanabilir bir değer. Yine de saklanmalı mı?",
+            "REL-4" => $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı başka bir alanla aynı bilgiyi tutuyor. Hangisi kalmalı?",
+            _ => $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı için ne yapılmalı?"
         };
 
     private static List<string> BuildAnswers(NormalizationResult result) =>

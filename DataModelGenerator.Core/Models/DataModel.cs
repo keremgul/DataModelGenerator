@@ -40,6 +40,13 @@ public class EntityAttribute
     public double Confidence { get; set; } = 1.0;
     public string ConfidenceReason { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Kullanıcıya gösterilen ad. Deterministik katmandan geçmemiş bir alan da
+    /// standarda uygun görünsün diye politikadan geçirilir.
+    /// </summary>
+    public string Label => Rules.NamingRules.ToTechnicalName(
+        string.IsNullOrWhiteSpace(TechnicalName) ? Name : TechnicalName);
+
     public EntityAttribute Clone() => new()
     {
         Name = Name,
@@ -72,7 +79,14 @@ public class ModelEntity
     public EntityAttribute? PrimaryKey => Attributes.FirstOrDefault(a => a.IsPrimaryKey);
     public IEnumerable<EntityAttribute> PrimaryKeys => Attributes.Where(a => a.IsPrimaryKey);
 
-    public override string ToString() => Name;
+    /// <summary>
+    /// Kullanıcıya gösterilen ad. Deterministik katmandan geçmemiş bir model de
+    /// (ör. LLM yanıtı süzülürken) standarda uygun görünsün diye politikadan geçirilir.
+    /// </summary>
+    public string Label => Rules.NamingRules.ToTechnicalName(
+        string.IsNullOrWhiteSpace(TechnicalName) ? Name : TechnicalName);
+
+    public override string ToString() => Label;
 }
 
 public class Relationship

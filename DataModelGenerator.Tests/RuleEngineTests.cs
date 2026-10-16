@@ -26,8 +26,8 @@ public class RuleEngineTests
 
         _engine.Normalize(model, new ProjectInput());
 
-        Assert.Equal("SiparisDetayi", model.Entities[0].TechnicalName);
-        Assert.Equal("UrunAdi", model.Entities[0].Attributes.Single(a => a.Name == "Ürün Adı").TechnicalName);
+        Assert.Equal("SIPARISDETAYI", model.Entities[0].TechnicalName);
+        Assert.Equal("URUNADI", model.Entities[0].Attributes.Single(a => a.Name == "Ürün Adı").TechnicalName);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class RuleEngineTests
         var entity = model.Entities[0];
 
         Assert.Equal("ID", entity.PrimaryKey!.TechnicalName);
-        var natural = entity.Attributes.Single(a => a.TechnicalName == "MusteriNo");
+        var natural = entity.Attributes.Single(a => a.TechnicalName == "MUSTERINO");
         Assert.False(natural.IsPrimaryKey);
         Assert.True(natural.IsUnique);
     }
@@ -78,12 +78,12 @@ public class RuleEngineTests
     public void Normalize_YabanciAnahtariHedefTabloAdiArtiIDOlarakAdlandirir()
     {
         var model = TestModels.CustomerOrder();
-        model.Entities[1].Attributes[2].TechnicalName = "MusteriNumarasi";
+        model.Entities[1].Attributes[2].TechnicalName = "MUSTERINUMARASI";
         model.Entities[1].Attributes[2].Name = "Müşteri Numarası";
 
         _engine.Normalize(model, new ProjectInput());
 
-        Assert.Contains(model.Entities[1].Attributes, a => a.TechnicalName == "MusteriID" && a.IsForeignKey);
+        Assert.Contains(model.Entities[1].Attributes, a => a.TechnicalName == "MUSTERIID" && a.IsForeignKey);
     }
 
     [Fact]
@@ -124,8 +124,8 @@ public class RuleEngineTests
 
         _engine.Normalize(model, new ProjectInput());
 
-        Assert.Equal("Musteri", model.Entities[0].TechnicalName);
-        Assert.Equal("Musteri2", model.Entities[1].TechnicalName);
+        Assert.Equal("MUSTERI", model.Entities[0].TechnicalName);
+        Assert.Equal("MUSTERI2", model.Entities[1].TechnicalName);
     }
 
     [Fact]
@@ -150,8 +150,8 @@ public class RuleEngineTests
 
         var foreignKey = model.Entities[1].Attributes.SingleOrDefault(a => a.IsForeignKey);
         Assert.NotNull(foreignKey);
-        Assert.Equal("MusteriID", foreignKey!.TechnicalName);
-        Assert.Equal("Musteri", foreignKey.ReferencesEntity);
+        Assert.Equal("MUSTERIID", foreignKey!.TechnicalName);
+        Assert.Equal("MUSTERI", foreignKey.ReferencesEntity);
         Assert.Equal("ID", foreignKey.ReferencesAttribute);
     }
 
@@ -164,8 +164,8 @@ public class RuleEngineTests
         ModelMerger.SyncForeignKeys(model);
 
         var relationship = Assert.Single(model.Relationships);
-        Assert.Equal("Musteri", relationship.FromEntity);
-        Assert.Equal("Siparis", relationship.ToEntity);
+        Assert.Equal("MUSTERI", relationship.FromEntity);
+        Assert.Equal("SIPARIS", relationship.ToEntity);
         Assert.Equal(Cardinality.OneToMany, relationship.Cardinality);
     }
 

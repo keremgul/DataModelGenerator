@@ -67,7 +67,7 @@ public class ChatDirectiveTests
         // Geriye yalnızca kullanıcıya yazılan yanıt ve özet/öneri tazelemesi kalır.
         Assert.Equal(["chat", "summary"], provider.Stages);
         Assert.Contains(context.Model.FindEntity("Sipariş")!.Attributes,
-            a => a.TechnicalName == "NetTutar");
+            a => a.TechnicalName == "NETTUTAR");
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class ChatDirectiveTests
         musteri.Attributes.Add(new EntityAttribute
         {
             Name = "FaksNo",
-            TechnicalName = "FaksNo",
+            TechnicalName = "FAKSNO",
             SourceRuleIds = { "BR-1" }
         });
 
@@ -86,7 +86,7 @@ public class ChatDirectiveTests
 
         Assert.DoesNotContain("router", provider.Stages);
         Assert.Equal(ChatTurnStatus.Applied, turn.Status);
-        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "FaksNo");
+        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "FAKSNO");
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class ChatDirectiveTests
         Assert.Contains("add-field", provider.Stages);
         Assert.DoesNotContain("reprompt", provider.Stages);
         Assert.Equal(ChatTurnStatus.Applied, turn.Status);
-        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VergiNo");
+        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VERGINO");
     }
 
     [Fact]

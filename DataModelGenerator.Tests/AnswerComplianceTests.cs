@@ -37,7 +37,7 @@ public class AnswerComplianceTests
         var result = Assert.Single(AnswerComplianceChecker.Check(model, [question]));
 
         Assert.True(result.IsSatisfied);
-        Assert.Contains("Müşteri", result.Evidence);
+        Assert.Contains("MUSTERI", result.Evidence);
     }
 
     [Fact]

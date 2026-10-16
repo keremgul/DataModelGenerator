@@ -22,7 +22,7 @@ public class ModelValidatorTests
         model.Entities.Add(new ModelEntity
         {
             Name = "Musteri Kopya",
-            TechnicalName = "Musteri",
+            TechnicalName = "MUSTERI",
             Attributes = { new EntityAttribute { TechnicalName = "Id", IsPrimaryKey = true, IsRequired = true } }
         });
 
@@ -35,7 +35,7 @@ public class ModelValidatorTests
         var model = TestModels.CustomerOrder();
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Ad Soyad", TechnicalName = "AdSoyad"
+            Name = "Ad Soyad", TechnicalName = "ADSOYAD"
         });
 
         Assert.Contains(_validator.Validate(model), i => i.Code == "NAME_COLLISION_ATTRIBUTE");
@@ -84,7 +84,7 @@ public class ModelValidatorTests
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
             Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
-            IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
+            IsForeignKey = true, ReferencesEntity = "SIPARIS", ReferencesAttribute = "SiparisNo",
             IsRequired = true
         });
 
@@ -99,7 +99,7 @@ public class ModelValidatorTests
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
             Name = "Üst Müşteri", TechnicalName = "UstMusteriNo",
-            IsForeignKey = true, ReferencesEntity = "Musteri", ReferencesAttribute = "MusteriNo",
+            IsForeignKey = true, ReferencesEntity = "MUSTERI", ReferencesAttribute = "MusteriNo",
             IsRequired = true
         });
 
@@ -114,7 +114,7 @@ public class ModelValidatorTests
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
             Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
-            IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
+            IsForeignKey = true, ReferencesEntity = "SIPARIS", ReferencesAttribute = "SiparisNo",
             IsRequired = false
         });
 

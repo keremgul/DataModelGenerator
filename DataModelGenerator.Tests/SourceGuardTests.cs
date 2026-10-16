@@ -32,7 +32,7 @@ public class SourceGuardTests
         Assert.Empty(accepted);
         var item = Assert.Single(pending);
         Assert.Equal(PendingReason.NoSource, item.Reason);
-        Assert.Equal("Kampanya", item.Target);
+        Assert.Equal("KAMPANYA", item.Target);
         Assert.NotEmpty(item.Question);
         Assert.NotEmpty(item.SuggestedAnswers);
     }
@@ -61,7 +61,7 @@ public class SourceGuardTests
 
         Assert.Empty(accepted);
         Assert.Equal(PendingReason.Uncertain, pending[0].Reason);
-        Assert.Contains("Adres", pending[0].Question);
+        Assert.Contains("ADRES", pending[0].Question);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class SourceGuardTests
 
         var item = Assert.Single(pending);
         Assert.Equal(PendingItemKind.Attribute, item.Kind);
-        Assert.Equal("Müşteri.Kredi Notu", item.Target);
+        Assert.Equal("MUSTERI.KREDINOTU", item.Target);
     }
 
     [Fact]

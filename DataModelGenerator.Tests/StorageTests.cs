@@ -115,10 +115,10 @@ public class StorageTests : IDisposable
 
         using var workbook = new ClosedXML.Excel.XLWorkbook(path);
         Assert.Equal(2, workbook.Worksheets.Count);
-        Assert.Contains(workbook.Worksheets, ws => ws.Name == "Musteri");
-        Assert.Contains(workbook.Worksheets, ws => ws.Name == "Siparis");
-        Assert.Equal("ID", workbook.Worksheet("Musteri").Cell(1, 1).GetString());
-        Assert.Equal(6, workbook.Worksheet("Musteri").LastRowUsed()!.RowNumber());
+        Assert.Contains(workbook.Worksheets, ws => ws.Name == "MUSTERI");
+        Assert.Contains(workbook.Worksheets, ws => ws.Name == "SIPARIS");
+        Assert.Equal("ID", workbook.Worksheet("MUSTERI").Cell(1, 1).GetString());
+        Assert.Equal(6, workbook.Worksheet("MUSTERI").LastRowUsed()!.RowNumber());
     }
 
     [Fact]

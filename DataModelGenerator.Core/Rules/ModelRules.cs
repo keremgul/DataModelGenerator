@@ -8,8 +8,18 @@ namespace DataModelGenerator.Core.Rules;
 /// </summary>
 public static class ModelRules
 {
-    /// <summary>Prompt'lara gömülen kural metni.</summary>
-    public const string PromptText = """
+    /// <summary>
+    /// Prompt'lara gömülen kural metni. Adlandırma kuralları politikadan geldiği
+    /// için çalışma zamanında eklenir.
+    /// </summary>
+    public static string PromptText => $"""
+        {StructuralRules}
+
+        ADLANDIRMA KURALLARI (zorunlu):
+        {NamingRules.Policy.Describe()}
+        """;
+
+    private const string StructuralRules = """
         VERİ MODELİ KURALLARI (zorunlu):
         1. Her tabloda "ID" adında, benzersiz bir birincil anahtar (PK) alanı bulunur. Doğal anahtarlar (müşteri no, kod vb.) PK değil, tekil (unique) alan olarak tutulur.
         2. Modelde ilişkisiz tablo bulunmaz; her tablo en az bir başka tabloyla ilişkilidir.

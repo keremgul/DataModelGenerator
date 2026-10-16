@@ -64,12 +64,12 @@ public static class AnswerComplianceChecker
         foreach (var entity in model.Entities)
         {
             if (entity.SourceRuleIds.Contains(ruleId, StringComparer.OrdinalIgnoreCase))
-                yield return entity.Name;
+                yield return entity.TechnicalName;
 
             foreach (var attribute in entity.Attributes)
             {
                 if (attribute.SourceRuleIds.Contains(ruleId, StringComparer.OrdinalIgnoreCase))
-                    yield return $"{entity.Name}.{attribute.Name}";
+                    yield return $"{entity.TechnicalName}.{attribute.TechnicalName}";
             }
         }
 

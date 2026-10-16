@@ -936,6 +936,11 @@ public class ModelPipeline
         ModelMerger.SyncForeignKeys(context.Model);
         notes.AddRange(_ruleEngine.RelinkReferences(context.Model));
 
+        // İsimlendirme standardı prompt'a yazılır ama ona güvenilmez: model
+        // kurala uymayan bir ad döndürürse burada düzeltilir.
+        foreach (var correction in NamingEnforcer.Enforce(context.Model))
+            context.NormalizationNotes.Add(correction);
+
         // Normalizasyon kuralları sırayla işletilir; geçemeyen alan modelde kalmaz.
         context.PendingItems.RemoveAll(p => p.Reason == PendingReason.NormalizationBlocked);
         context.NormalizationResults.Clear();

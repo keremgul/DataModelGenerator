@@ -12,7 +12,7 @@ public class SerializationTests
 
     [Fact]
     public void Mermaid_KardinaliteyiDogruNotasyonlaYazar() =>
-        Assert.Contains("Musteri ||--o{ Siparis", MermaidSerializer.Serialize(TestModels.CustomerOrder()));
+        Assert.Contains("MUSTERI ||--o{ SIPARIS", MermaidSerializer.Serialize(TestModels.CustomerOrder()));
 
     [Fact]
     public void Mermaid_OpsiyonelIliskiyiKesikliCizgiyleGosterir()
@@ -20,7 +20,7 @@ public class SerializationTests
         var model = TestModels.CustomerOrder();
         model.Relationships[0].IsRequired = false;
 
-        Assert.Contains("Musteri ||..o{ Siparis", MermaidSerializer.Serialize(model));
+        Assert.Contains("MUSTERI ||..o{ SIPARIS", MermaidSerializer.Serialize(model));
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class SerializationTests
     {
         var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
 
-        Assert.Contains("alan Tutar", mermaid);
+        Assert.Contains("alan TUTAR", mermaid);
         Assert.DoesNotContain("DECIMAL", mermaid);
         Assert.DoesNotContain("VARCHAR", mermaid);
         Assert.DoesNotContain("BIGINT", mermaid);
@@ -40,7 +40,7 @@ public class SerializationTests
         var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
 
         Assert.Contains("alan ID PK", mermaid);
-        Assert.Contains("alan MusteriID FK", mermaid);
+        Assert.Contains("alan MUSTERIID FK", mermaid);
     }
 
     [Fact]

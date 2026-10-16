@@ -60,14 +60,14 @@ public class ChatModelAwarenessTests
         var (_, added) = await pipeline.SendChatAsync(context, "Müşteriye vergi numarası ekle");
 
         Assert.Equal(ChatTurnStatus.Applied, added.Status);
-        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VergiNo");
+        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VERGINO");
 
         // 2. tur: aynı alanı kaldır — kalıp eşleşmesiyle, LLM'e gitmeden.
         provider.Stages.Clear();
         var (_, removed) = await pipeline.SendChatAsync(context, "Müşteri tablosundan VergiNo alanını kaldır");
 
         Assert.Equal(ChatTurnStatus.Applied, removed.Status);
-        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VergiNo");
+        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VERGINO");
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class ChatModelAwarenessTests
         var musteri = context.Model.FindEntity("Müşteri")!;
         musteri.Attributes.Add(new EntityAttribute
         {
-            Name = "Vergi No", TechnicalName = "VergiNo", SourceRuleIds = { "BR-1" }
+            Name = "Vergi No", TechnicalName = "VERGINO", SourceRuleIds = { "BR-1" }
         });
 
         provider.RouterResponse = """
@@ -88,7 +88,7 @@ public class ChatModelAwarenessTests
         var (_, turn) = await pipeline.SendChatAsync(context, "Müşteriden vergi numarasını çıkar");
 
         Assert.Equal(ChatTurnStatus.Applied, turn.Status);
-        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VergiNo");
+        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "VERGINO");
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ChatModelAwarenessTests
         var after = context.Model.FindEntity("Müşteri")!.Attributes.Select(a => a.TechnicalName).ToList();
 
         Assert.All(before, name => Assert.Contains(name, after));
-        Assert.Contains("VergiNo", after);
+        Assert.Contains("VERGINO", after);
     }
 
     [Fact]
@@ -144,8 +144,8 @@ public class ChatModelAwarenessTests
         var (package, turn) = await pipeline.SendChatAsync(context, "Soyad alanını kaldır");
 
         Assert.Equal(ChatTurnStatus.Applied, turn.Status);
-        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "Soyad");
-        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "Ad");
+        Assert.DoesNotContain(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "SOYAD");
+        Assert.Contains(context.Model.FindEntity("Müşteri")!.Attributes, a => a.TechnicalName == "AD");
         Assert.Contains(package.RepromptNotes, n => n.Contains("Kaldırılan alanlar"));
     }
 
@@ -180,8 +180,8 @@ public class ChatModelAwarenessTests
         var routerPrompt = provider.Prompts.Single(p => p.Contains("Direktif Yönlendirici"));
 
         // Router, modelin güncel alanlarını hem teknik hem görünen adıyla görmeli.
-        Assert.Contains("Musteri", routerPrompt);
-        Assert.Contains("MusteriNo", routerPrompt);
+        Assert.Contains("MUSTERI", routerPrompt);
+        Assert.Contains("MUSTERINO", routerPrompt);
         Assert.Contains("Müşteri No", routerPrompt);
     }
 }

@@ -10,7 +10,7 @@ public class NormalizationEngineTests
 
     private static DataModel ModelWith(params EntityAttribute[] attributes)
     {
-        var entity = new ModelEntity { Name = "Müşteri", TechnicalName = "Musteri", SourceRuleIds = { "BR-01" } };
+        var entity = new ModelEntity { Name = "Müşteri", TechnicalName = "MUSTERI", SourceRuleIds = { "BR-01" } };
         entity.Attributes.Add(new EntityAttribute
         {
             Name = "ID", TechnicalName = "ID", IsPrimaryKey = true, IsRequired = true, IsUnique = true
@@ -23,7 +23,7 @@ public class NormalizationEngineTests
     private static EntityAttribute Field(string name) => new()
     {
         Name = name,
-        TechnicalName = name.Replace(" ", string.Empty),
+        TechnicalName = NamingRules.ToTechnicalName(name),
         SourceRuleIds = { "BR-01" }
     };
 
@@ -98,7 +98,7 @@ public class NormalizationEngineTests
     {
         var model = ModelWith(new EntityAttribute
         {
-            Name = "BirimID", TechnicalName = "BirimID",
+            Name = "BirimID", TechnicalName = "BIRIMID",
             IsForeignKey = true, ReferencesEntity = "Birim", SourceRuleIds = { "BR-01" }
         });
 
@@ -143,7 +143,7 @@ public class NormalizationEngineTests
         var model = ModelWith(Field("Ad Soyad"));
         model.Entities.Add(new ModelEntity
         {
-            Name = "Sipariş", TechnicalName = "Siparis", SourceRuleIds = { "BR-02" },
+            Name = "Sipariş", TechnicalName = "SIPARIS", SourceRuleIds = { "BR-02" },
             Attributes =
             {
                 new EntityAttribute { Name = "ID", TechnicalName = "ID", IsPrimaryKey = true },
@@ -199,7 +199,7 @@ public class NormalizationEngineTests
         var model = ModelWith(Field("Tutar"));
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
-            Name = "Dönem", TechnicalName = "Donem", IsPrimaryKey = true
+            Name = "Dönem", TechnicalName = "DONEM", IsPrimaryKey = true
         });
 
         var pending = new List<PendingItem>();
@@ -231,8 +231,8 @@ public class NormalizationEngineTests
         var results = _engine.Apply(model, pending);
 
         // Belirleyici kalır, ona bağlı açıklayıcı alan modele girmez.
-        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "IlKodu");
-        Assert.DoesNotContain(model.Entities[0].Attributes, a => a.TechnicalName == "IlAdi");
+        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "ILKODU");
+        Assert.DoesNotContain(model.Entities[0].Attributes, a => a.TechnicalName == "ILADI");
 
         Assert.Contains(results, r => r.ViolatedRule == "3NF-2");
         var item = Assert.Single(pending, p => p.ViolatedRule == "3NF-2");
@@ -247,7 +247,7 @@ public class NormalizationEngineTests
         var pending = new List<PendingItem>();
         _engine.Apply(model, pending);
 
-        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "MusteriAdi");
+        Assert.Contains(model.Entities[0].Attributes, a => a.TechnicalName == "MUSTERIADI");
         Assert.DoesNotContain(pending, p => p.ViolatedRule == "3NF-2");
     }
 
@@ -257,10 +257,10 @@ public class NormalizationEngineTests
     public void KardinalitesiBilinmeyenIliskiREL2denGecemez()
     {
         var model = ModelWith();
-        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "Siparis" });
+        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "SIPARIS" });
         model.Relationships.Add(new Relationship
         {
-            FromEntity = "Musteri", ToEntity = "Siparis", Cardinality = Cardinality.Unknown
+            FromEntity = "MUSTERI", ToEntity = "SIPARIS", Cardinality = Cardinality.Unknown
         });
 
         var pending = new List<PendingItem>();
@@ -275,10 +275,10 @@ public class NormalizationEngineTests
     public void CozulmemisCokaCokIliskiREL3tenGecemez()
     {
         var model = ModelWith();
-        model.Entities.Add(new ModelEntity { Name = "Ürün", TechnicalName = "Urun" });
+        model.Entities.Add(new ModelEntity { Name = "Ürün", TechnicalName = "URUN" });
         model.Relationships.Add(new Relationship
         {
-            FromEntity = "Musteri", ToEntity = "Urun", Cardinality = Cardinality.ManyToMany
+            FromEntity = "MUSTERI", ToEntity = "URUN", Cardinality = Cardinality.ManyToMany
         });
 
         var pending = new List<PendingItem>();
@@ -292,10 +292,10 @@ public class NormalizationEngineTests
     public void DesteklenenIliskiREL2VeREL3uGecer()
     {
         var model = ModelWith();
-        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "Siparis" });
+        model.Entities.Add(new ModelEntity { Name = "Sipariş", TechnicalName = "SIPARIS" });
         model.Relationships.Add(new Relationship
         {
-            FromEntity = "Musteri", ToEntity = "Siparis", Cardinality = Cardinality.OneToMany,
+            FromEntity = "MUSTERI", ToEntity = "SIPARIS", Cardinality = Cardinality.OneToMany,
             SourceRuleIds = { "BR-02" }
         });
 

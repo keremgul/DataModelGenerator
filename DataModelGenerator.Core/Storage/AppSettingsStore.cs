@@ -7,6 +7,12 @@ public class AppSettings
     public string ActiveProfileId { get; set; } = string.Empty;
     public int SampleRowCount { get; set; } = 20;
     public string LastExportDirectory { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Teknik adlandırma kuralları. Ayar dosyasından düzenlenebilir; yeni kural
+    /// gerektiğinde NamingPolicy genişletilir.
+    /// </summary>
+    public Rules.NamingPolicy Naming { get; set; } = Rules.NamingPolicy.Default;
 }
 
 public class AppSettingsStore

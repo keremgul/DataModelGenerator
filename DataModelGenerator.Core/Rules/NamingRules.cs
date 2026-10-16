@@ -7,9 +7,18 @@ namespace DataModelGenerator.Core.Rules;
 /// <summary>
 /// Deterministik adlandırma katmanı: Türkçe doğal adları teknik adlara çevirir.
 /// LLM'e bırakılmaz — aynı girdi her zaman aynı teknik adı üretir.
+/// Kurallar <see cref="NamingPolicy"/> üzerinden konfigüre edilir.
 /// </summary>
 public static class NamingRules
 {
+    /// <summary>
+    /// Uygulama açılışında ayar dosyasından yüklenir. Statik olması, adlandırmanın
+    /// çağrıldığı onlarca noktaya politika parametresi taşımamak içindir.
+    /// </summary>
+    public static NamingPolicy Policy { get; private set; } = NamingPolicy.Default;
+
+    public static void UsePolicy(NamingPolicy policy) => Policy = policy ?? NamingPolicy.Default;
+
     private static readonly Dictionary<char, char> TurkishFolding = new()
     {
         ['ç'] = 'c', ['Ç'] = 'C',
@@ -30,8 +39,15 @@ public static class NamingRules
         return sb.ToString();
     }
 
-    /// <summary>PascalCase teknik ad: "Müşteri Sipariş Detayı" → "MusteriSiparisDetayi".</summary>
-    public static string ToTechnicalName(string naturalName, IEnumerable<GlossaryTerm>? glossary = null)
+    /// <summary>
+    /// Doğal adı yürürlükteki politikaya göre teknik ada çevirir.
+    /// Varsayılan politikada: "Müşteri Sipariş Detayı" → "MUSTERISIPARISDETAYI".
+    /// </summary>
+    public static string ToTechnicalName(string naturalName, IEnumerable<GlossaryTerm>? glossary = null) =>
+        ToTechnicalName(naturalName, Policy, glossary);
+
+    public static string ToTechnicalName(string naturalName, NamingPolicy policy,
+        IEnumerable<GlossaryTerm>? glossary = null)
     {
         if (string.IsNullOrWhiteSpace(naturalName)) return string.Empty;
 
@@ -41,40 +57,70 @@ public static class NamingRules
         if (mapped is not null)
             naturalName = mapped.TechnicalName;
 
-        var folded = FoldTurkish(naturalName);
-        var words = SplitWords(folded);
+        var source = policy.FoldTurkish ? FoldTurkish(naturalName) : naturalName;
+        var words = SplitWords(source);
         if (words.Count == 0) return string.Empty;
 
-        var sb = new StringBuilder();
-        foreach (var word in words)
+        var joined = policy.Case switch
         {
-            sb.Append(char.ToUpperInvariant(word[0]));
-            if (word.Length > 1) sb.Append(word[1..].ToLowerInvariant());
-        }
+            NameCase.Upper => Join(words.Select(w => w.ToUpperInvariant()), policy.Separator),
+            NameCase.Lower => Join(words.Select(w => w.ToLowerInvariant()), policy.Separator),
+            _ => Join(words.Select(Capitalize), policy.Separator)
+        };
 
-        var result = sb.ToString();
-        return char.IsDigit(result[0]) ? "N" + result : result;
+        // Ad rakamla başlayamaz.
+        if (joined.Length > 0 && char.IsDigit(joined[0]))
+            joined = "N" + joined;
+
+        return policy.MaxLength > 0 && joined.Length > policy.MaxLength
+            ? joined[..policy.MaxLength]
+            : joined;
     }
 
-    /// <summary>UPPER_SNAKE_CASE — DDL çıktısı için.</summary>
-    public static string ToSnakeUpper(string naturalName)
-    {
-        var words = SplitWords(FoldTurkish(naturalName));
-        return words.Count == 0
-            ? string.Empty
-            : string.Join("_", words.Select(w => w.ToUpperInvariant()));
-    }
+    private static string Join(IEnumerable<string> words, NameSeparator separator) =>
+        string.Join(separator == NameSeparator.Underscore ? "_" : string.Empty, words);
+
+    private static string Capitalize(string word) =>
+        word.Length switch
+        {
+            0 => word,
+            1 => word.ToUpperInvariant(),
+            _ => char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant()
+        };
 
     /// <summary>Her tablonun birincil anahtarı bu adı taşır.</summary>
-    public const string PrimaryKeyName = "ID";
+    public static string PrimaryKeyName => Policy.PrimaryKeyName;
 
     /// <summary>Yabancı anahtar, referans verdiği tablonun adı + "ID" şeklinde adlandırılır.</summary>
     public static string DefaultForeignKeyName(string referencedEntityTechnicalName) =>
-        $"{referencedEntityTechnicalName}ID";
+        ForeignKeyName(referencedEntityTechnicalName, role: null);
+
+    /// <summary>
+    /// Rol verilirse &lt;ROL&gt;&lt;TABLOADI&gt;ID üretilir. Aynı tabloya birden çok
+    /// referans gerektiğinde ayrım bu önekle yapılır (GONDERENMUSTERIID).
+    /// </summary>
+    public static string ForeignKeyName(string referencedEntityTechnicalName, string? role)
+    {
+        var suffix = Policy.ForeignKeySuffix;
+        var separator = Policy.Separator == NameSeparator.Underscore ? "_" : string.Empty;
+
+        var name = string.IsNullOrWhiteSpace(role)
+            ? $"{referencedEntityTechnicalName}{separator}{suffix}"
+            : $"{ToTechnicalName(role)}{separator}{referencedEntityTechnicalName}{separator}{suffix}";
+
+        return Policy.MaxLength > 0 && name.Length > Policy.MaxLength
+            ? name[..Policy.MaxLength]
+            : name;
+    }
 
     /// <summary>İki varlık arasındaki N-N ilişkisi için ara tablo adı.</summary>
     public static string JunctionTableName(string left, string right) =>
-        $"{left}{right}";
+        Policy.Separator == NameSeparator.Underscore ? $"{left}_{right}" : $"{left}{right}";
+
+    /// <summary>Ad yürürlükteki politikaya uyuyor mu? Uymuyorsa düzeltilir.</summary>
+    public static bool IsCompliant(string technicalName) =>
+        !string.IsNullOrWhiteSpace(technicalName) &&
+        technicalName.Equals(ToTechnicalName(technicalName), StringComparison.Ordinal);
 
     /// <summary>Aynı kapsamda tekrar eden adı benzersizleştirir: Musteri, Musteri2, Musteri3…</summary>
     public static string MakeUnique(string candidate, ICollection<string> existing)

@@ -10,7 +10,7 @@ internal static class TestModels
         var customer = new ModelEntity
         {
             Name = "Müşteri",
-            TechnicalName = "Musteri",
+            TechnicalName = "MUSTERI",
             SourceRuleIds = { "BR-1" },
             Attributes =
             {
@@ -21,12 +21,12 @@ internal static class TestModels
                 },
                 new EntityAttribute
                 {
-                    Name = "Müşteri No", TechnicalName = "MusteriNo",
+                    Name = "Müşteri No", TechnicalName = "MUSTERINO",
                     IsRequired = true, IsUnique = true, SourceRuleIds = { "BR-1" }
                 },
                 new EntityAttribute
                 {
-                    Name = "Ad Soyad", TechnicalName = "AdSoyad",
+                    Name = "Ad Soyad", TechnicalName = "ADSOYAD",
                     IsRequired = true, SourceRuleIds = { "BR-1" }
                 }
             }
@@ -35,7 +35,7 @@ internal static class TestModels
         var order = new ModelEntity
         {
             Name = "Sipariş",
-            TechnicalName = "Siparis",
+            TechnicalName = "SIPARIS",
             SourceRuleIds = { "BR-2" },
             Attributes =
             {
@@ -46,13 +46,13 @@ internal static class TestModels
                 },
                 new EntityAttribute
                 {
-                    Name = "Tutar", TechnicalName = "Tutar",
+                    Name = "Tutar", TechnicalName = "TUTAR",
                     IsRequired = true, SourceRuleIds = { "BR-2" }
                 },
                 new EntityAttribute
                 {
-                    Name = "MusteriID", TechnicalName = "MusteriID",
-                    IsForeignKey = true, ReferencesEntity = "Musteri", ReferencesAttribute = "ID",
+                    Name = "MusteriID", TechnicalName = "MUSTERIID",
+                    IsForeignKey = true, ReferencesEntity = "MUSTERI", ReferencesAttribute = "ID",
                     IsRequired = true, SourceRuleIds = { "BR-2" }
                 }
             }
@@ -65,7 +65,7 @@ internal static class TestModels
             {
                 new Relationship
                 {
-                    Name = "verir", FromEntity = "Musteri", ToEntity = "Siparis",
+                    Name = "verir", FromEntity = "MUSTERI", ToEntity = "SIPARIS",
                     Cardinality = Cardinality.OneToMany, IsRequired = true, SourceRuleIds = { "BR-2" }
                 }
             }

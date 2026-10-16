@@ -135,11 +135,11 @@ public class RepromptAndQuestionLoopTests
 
         Assert.Null(package.Model.FindEntity("Müşteri"));
         Assert.DoesNotContain(package.Model.Relationships,
-            r => r.FromEntity.Contains("Musteri") || r.ToEntity.Contains("Musteri"));
+            r => r.FromEntity.Contains("MUSTERI") || r.ToEntity.Contains("MUSTERI"));
 
         var order = package.Model.FindEntity("Sipariş");
         Assert.NotNull(order);
-        Assert.DoesNotContain(order!.Attributes, a => a.ReferencesEntity == "Musteri");
+        Assert.DoesNotContain(order!.Attributes, a => a.ReferencesEntity == "MUSTERI");
     }
 
     [Fact]

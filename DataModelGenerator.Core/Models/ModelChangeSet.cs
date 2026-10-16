@@ -33,10 +33,10 @@ public class ModelChangeSet
         var afterEntities = after.Entities.ToDictionary(e => e.TechnicalName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var (name, entity) in afterEntities.Where(e => !beforeEntities.ContainsKey(e.Key)))
-            changes.AddedEntities.Add(entity.Name);
+            changes.AddedEntities.Add(entity.TechnicalName);
 
         foreach (var (name, entity) in beforeEntities.Where(e => !afterEntities.ContainsKey(e.Key)))
-            changes.RemovedEntities.Add(entity.Name);
+            changes.RemovedEntities.Add(entity.TechnicalName);
 
         foreach (var (name, afterEntity) in afterEntities)
         {
@@ -46,10 +46,10 @@ public class ModelChangeSet
             var afterAttributes = afterEntity.Attributes.Select(a => a.TechnicalName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var added in afterAttributes.Except(beforeAttributes, StringComparer.OrdinalIgnoreCase))
-                changes.AddedAttributes.Add($"{afterEntity.Name}.{added}");
+                changes.AddedAttributes.Add($"{afterEntity.TechnicalName}.{added}");
 
             foreach (var removed in beforeAttributes.Except(afterAttributes, StringComparer.OrdinalIgnoreCase))
-                changes.RemovedAttributes.Add($"{afterEntity.Name}.{removed}");
+                changes.RemovedAttributes.Add($"{afterEntity.TechnicalName}.{removed}");
         }
 
         var beforeRelationships = before.Relationships.Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);

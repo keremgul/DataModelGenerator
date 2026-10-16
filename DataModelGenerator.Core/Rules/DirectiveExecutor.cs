@@ -71,7 +71,7 @@ public static class DirectiveExecutor
         return new DirectiveResult
         {
             Applied = true,
-            Message = $"'{entity.Name}.{oldTechnical}' alanı '{newTechnical}' olarak değiştirildi.",
+            Message = $"'{entity.TechnicalName}.{oldTechnical}' alanı '{newTechnical}' olarak değiştirildi.",
             AffectedEntities = [entity.TechnicalName]
         };
     }
@@ -93,7 +93,7 @@ public static class DirectiveExecutor
         return new DirectiveResult
         {
             Applied = true,
-            Message = $"'{entity.Name}.{attribute.TechnicalName}' alanı kaldırıldı.",
+            Message = $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı kaldırıldı.",
             AffectedEntities = [entity.TechnicalName]
         };
     }
@@ -167,7 +167,7 @@ public static class DirectiveExecutor
         return new DirectiveResult
         {
             Applied = true,
-            Message = $"'{entity.Name}' tablosu, ilişkileri ve ona işaret eden yabancı anahtarlarla birlikte kaldırıldı.",
+            Message = $"'{entity.TechnicalName}' tablosu, ilişkileri ve ona işaret eden yabancı anahtarlarla birlikte kaldırıldı.",
             AffectedEntities = affected
         };
     }

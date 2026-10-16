@@ -31,18 +31,18 @@ public class TraceabilityTableTests
         var musteri = new ModelEntity
         {
             Name = "Müşteri",
-            TechnicalName = "Musteri",
+            TechnicalName = "MUSTERI",
             SourceRuleIds = { "BR-01" },
             Attributes =
             {
                 new EntityAttribute { Name = "ID", TechnicalName = "ID", IsPrimaryKey = true },
                 new EntityAttribute
                 {
-                    Name = "Vergi No", TechnicalName = "VergiNo", SourceRuleIds = { "BR-02" }
+                    Name = "Vergi No", TechnicalName = "VERGINO", SourceRuleIds = { "BR-02" }
                 },
                 new EntityAttribute
                 {
-                    Name = "Sipariş Sahibi", TechnicalName = "SiparisSahibi", SourceRuleIds = { "Q-01" }
+                    Name = "Sipariş Sahibi", TechnicalName = "SIPARISSAHIBI", SourceRuleIds = { "Q-01" }
                 }
             }
         };
@@ -82,7 +82,7 @@ public class TraceabilityTableTests
         var table = TraceabilityTable.Build(Package(), Input());
 
         Assert.Equal(3, table.Entries.Count);
-        Assert.Contains(table.Entries, e => e.Attribute == "VergiNo");
+        Assert.Contains(table.Entries, e => e.Attribute == "VERGINO");
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class TraceabilityTableTests
     public void RozetKisa_UzunMetinTooltipte()
     {
         var table = TraceabilityTable.Build(Package(), Input());
-        var row = table.Entries.Single(e => e.Attribute == "VergiNo");
+        var row = table.Entries.Single(e => e.Attribute == "VERGINO");
 
         Assert.Equal("BR-02", row.Badges);
         Assert.Contains("Müşterinin vergi numarası saklanır.", row.Tooltip);
@@ -109,7 +109,7 @@ public class TraceabilityTableTests
     public void SoruKaynagi_SoruVeCevapMetniniTasir()
     {
         var table = TraceabilityTable.Build(Package(), Input());
-        var row = table.Entries.Single(e => e.Attribute == "SiparisSahibi");
+        var row = table.Entries.Single(e => e.Attribute == "SIPARISSAHIBI");
 
         Assert.Contains("birden çok müşteriye", row.QuestionSummary);
         Assert.Contains("tek müşteriye aittir", row.AnswerSummary);
@@ -152,7 +152,7 @@ public class TraceabilityTableTests
     public void NormalizasyonDurumu_SatiraBaglanir()
     {
         var table = TraceabilityTable.Build(Package(), Input());
-        var row = table.Entries.Single(e => e.Attribute == "VergiNo");
+        var row = table.Entries.Single(e => e.Attribute == "VERGINO");
 
         Assert.Equal("GEÇTİ", row.NormalizationStatus);
         Assert.Contains("Atomik", row.Tooltip);
@@ -165,7 +165,7 @@ public class TraceabilityTableTests
         package.Model.Entities[0].Attributes[1].SourceRuleIds[0] = "BR-99";
 
         var table = TraceabilityTable.Build(package, Input());
-        var row = table.Entries.Single(e => e.Attribute == "VergiNo");
+        var row = table.Entries.Single(e => e.Attribute == "VERGINO");
 
         Assert.Equal("BR-99", row.Badges);
         Assert.Contains("bulunamadı", row.Tooltip);
@@ -186,7 +186,7 @@ public class TraceabilityTableTests
         });
 
         var table = TraceabilityTable.Build(package, Input());
-        var row = table.Entries.Single(e => e.Attribute == "SiparisSahibi");
+        var row = table.Entries.Single(e => e.Attribute == "SIPARISSAHIBI");
 
         Assert.Equal("AYRIŞTIRILDI", row.NormalizationStatus);
     }
@@ -198,7 +198,7 @@ public class TraceabilityTableTests
         input.Rules[1].Text = new string('x', 200);
 
         var table = TraceabilityTable.Build(Package(), input);
-        var row = table.Entries.Single(e => e.Attribute == "VergiNo");
+        var row = table.Entries.Single(e => e.Attribute == "VERGINO");
 
         Assert.True(row.RuleSummary.Length <= 70);
         Assert.EndsWith("…", row.RuleSummary);

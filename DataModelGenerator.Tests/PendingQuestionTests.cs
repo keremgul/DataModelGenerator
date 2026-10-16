@@ -139,9 +139,9 @@ public class PendingQuestionTests
         var package = await pipeline.GenerateAsync(context);
 
         var musteri = package.Model.FindEntity("Müşteri")!;
-        Assert.DoesNotContain(musteri.Attributes, a => a.TechnicalName.Contains("Faks"));
+        Assert.DoesNotContain(musteri.Attributes, a => a.TechnicalName.Contains("FAKS"));
 
-        var pending = package.PendingItems.Single(p => p.Target.Contains("Faks"));
+        var pending = package.PendingItems.Single(p => p.Target.Contains("FAKSNO"));
         Assert.Equal(PendingReason.NoSource, pending.Reason);
         Assert.StartsWith("BEK-", pending.Id);
         Assert.Contains(package.Questions, q => q.AmbiguityId == pending.Signature);

@@ -30,10 +30,10 @@ public static class SourceGuard
 
             if (sources.Count == 0)
             {
-                pending.Add(Build(PendingItemKind.Entity, PendingReason.NoSource, entity.Name,
-                    $"'{entity.Name}' tablosu hiçbir business rule, soru cevabı veya direktife bağlanamadı.",
+                pending.Add(Build(PendingItemKind.Entity, PendingReason.NoSource, entity.Label,
+                    $"'{entity.Label}' tablosu hiçbir business rule, soru cevabı veya direktife bağlanamadı.",
                     entity.SourceRuleIds,
-                    $"'{entity.Name}' tablosu hangi kuraldan doğuyor? Modele girmesi gerekiyor mu?",
+                    $"'{entity.Label}' tablosu hangi kuraldan doğuyor? Modele girmesi gerekiyor mu?",
                     ["Gerekli — ilgili kuralı ekleyeceğim", "Gerekli değil, çıkar"]));
                 continue;
             }
@@ -42,10 +42,10 @@ public static class SourceGuard
 
             if (entity.Certainty == Certainty.Belirsiz)
             {
-                pending.Add(Build(PendingItemKind.Entity, PendingReason.Uncertain, entity.Name,
-                    $"'{entity.Name}' tablosu belirsiz olarak işaretlendi: {entity.ConfidenceReason}",
+                pending.Add(Build(PendingItemKind.Entity, PendingReason.Uncertain, entity.Label,
+                    $"'{entity.Label}' tablosu belirsiz olarak işaretlendi: {entity.ConfidenceReason}",
                     sources,
-                    $"'{entity.Name}' ayrı bir tablo olmalı mı, yoksa başka bir tablonun alanı mı?",
+                    $"'{entity.Label}' ayrı bir tablo olmalı mı, yoksa başka bir tablonun alanı mı?",
                     ["Ayrı tablo olmalı", "Başka tablonun alanı olmalı"]));
                 continue;
             }
@@ -64,7 +64,7 @@ public static class SourceGuard
 
         foreach (var attribute in entity.Attributes)
         {
-            var target = $"{entity.Name}.{attribute.Name}";
+            var target = $"{entity.Label}.{attribute.Label}";
             var sources = ValidSources(attribute.SourceRuleIds, known);
 
             // Anahtar alanları model kuralından doğar; kaynak aranmaz.
@@ -79,7 +79,7 @@ public static class SourceGuard
                 pending.Add(Build(PendingItemKind.Attribute, PendingReason.NoSource, target,
                     $"'{target}' alanı hiçbir kurala bağlanamadı; kaynaksız alan modele eklenmez.",
                     attribute.SourceRuleIds,
-                    $"'{entity.Name}' tablosunda '{attribute.Name}' alanı gerçekten gerekli mi? Hangi kuraldan doğuyor?",
+                    $"'{entity.Label}' tablosunda '{attribute.Label}' alanı gerçekten gerekli mi? Hangi kuraldan doğuyor?",
                     ["Gerekli — ilgili kuralı ekleyeceğim", "Gerekli değil, çıkar"]));
                 continue;
             }
@@ -91,7 +91,7 @@ public static class SourceGuard
                 pending.Add(Build(PendingItemKind.Attribute, PendingReason.Uncertain, target,
                     $"'{target}' alanı belirsiz olarak işaretlendi: {attribute.ConfidenceReason}",
                     sources,
-                    $"'{entity.Name}' tablosunda '{attribute.Name}' alanı bulunmalı mı?",
+                    $"'{entity.Label}' tablosunda '{attribute.Label}' alanı bulunmalı mı?",
                     ["Evet, bulunmalı", "Hayır, çıkar"]));
                 continue;
             }

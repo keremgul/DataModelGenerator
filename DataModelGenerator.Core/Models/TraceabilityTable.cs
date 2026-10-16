@@ -164,7 +164,7 @@ public class TraceabilityTable
 
                 table.Entries.Add(new TraceEntry
                 {
-                    Entity = entity.Name,
+                    Entity = entity.TechnicalName,
                     EntityTechnicalName = entity.TechnicalName,
                     Attribute = attribute.TechnicalName,
                     KeyText = attribute.IsPrimaryKey ? "PK"

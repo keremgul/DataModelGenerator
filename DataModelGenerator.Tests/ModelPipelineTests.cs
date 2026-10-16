@@ -196,12 +196,12 @@ public class ModelPipelineTests
 
         var order = package.Model.FindEntity("Sipariş");
         Assert.NotNull(order);
-        Assert.Contains(order!.Attributes, a => a.TechnicalName == "IndirimOrani");
+        Assert.Contains(order!.Attributes, a => a.TechnicalName == "INDIRIMORANI");
 
         // Kapsam dışındaki Müşteri korunmalı ("Ad Soyad" 1NF-1 gereği ayrıca beklemede listesine düşer).
         var customer = package.Model.FindEntity("Müşteri");
         Assert.NotNull(customer);
-        Assert.Contains(customer!.Attributes, a => a.TechnicalName == "MusteriNo");
+        Assert.Contains(customer!.Attributes, a => a.TechnicalName == "MUSTERINO");
     }
 
     [Fact]
@@ -212,10 +212,10 @@ public class ModelPipelineTests
         var package = await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
 
         Assert.DoesNotContain(package.Model.Entities.SelectMany(e => e.Attributes),
-            a => a.TechnicalName == "AdSoyad");
+            a => a.TechnicalName == "ADSOYAD");
 
         Assert.Contains(package.PendingItems,
-            p => p.ViolatedRule == "1NF-1" && p.Target.Contains("Ad Soyad"));
+            p => p.ViolatedRule == "1NF-1" && p.Target.Contains("ADSOYAD"));
     }
 
     [Fact]

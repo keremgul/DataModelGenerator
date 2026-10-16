@@ -30,8 +30,8 @@ public class SampleDataGeneratorTests
         var model = TestModels.CustomerOrder();
         var dataSet = _generator.Generate(model, 30);
 
-        var customers = dataSet.Tables.Single(t => t.TechnicalName == "Musteri");
-        var orders = dataSet.Tables.Single(t => t.TechnicalName == "Siparis");
+        var customers = dataSet.Tables.Single(t => t.TechnicalName == "MUSTERI");
+        var orders = dataSet.Tables.Single(t => t.TechnicalName == "SIPARIS");
 
         var customerKeyIndex = customers.Columns.FindIndex(c => c.IsPrimaryKey);
         var orderForeignKeyIndex = orders.Columns.FindIndex(c => c.IsForeignKey);
@@ -46,7 +46,7 @@ public class SampleDataGeneratorTests
     public void Generate_BirincilAnahtarlariTekilUretir()
     {
         var dataSet = _generator.Generate(TestModels.CustomerOrder(), 50);
-        var customers = dataSet.Tables.Single(t => t.TechnicalName == "Musteri");
+        var customers = dataSet.Tables.Single(t => t.TechnicalName == "MUSTERI");
         var keyIndex = customers.Columns.FindIndex(c => c.IsPrimaryKey);
 
         var keys = customers.Rows.Select(r => r[keyIndex]?.ToString()).ToList();
@@ -81,7 +81,7 @@ public class SampleDataGeneratorTests
                     Attributes =
                     {
                         new EntityAttribute { TechnicalName = "IslemId", Name = "İşlem Id", IsPrimaryKey = true, IsRequired = true },
-                        new EntityAttribute { TechnicalName = "Tutar", Name = "Tutar", IsRequired = true },
+                        new EntityAttribute { TechnicalName = "TUTAR", Name = "Tutar", IsRequired = true },
                         new EntityAttribute { TechnicalName = "IslemTarihi", Name = "İşlem Tarihi", IsRequired = true },
                         new EntityAttribute { TechnicalName = "Aktif", Name = "Aktif", IsRequired = true }
                     }
@@ -107,17 +107,17 @@ public class SampleDataGeneratorTests
         model.Entities[0].Attributes.Add(new EntityAttribute
         {
             Name = "Son Sipariş", TechnicalName = "SonSiparisNo",
-            IsForeignKey = true, ReferencesEntity = "Siparis", ReferencesAttribute = "SiparisNo",
+            IsForeignKey = true, ReferencesEntity = "SIPARIS", ReferencesAttribute = "SiparisNo",
             IsRequired = false
         });
 
         var dataSet = _generator.Generate(model, 10);
 
-        var orders = dataSet.Tables.Single(t => t.TechnicalName == "Siparis");
+        var orders = dataSet.Tables.Single(t => t.TechnicalName == "SIPARIS");
         var orderKeyIndex = orders.Columns.FindIndex(c => c.IsPrimaryKey);
         var validOrderKeys = orders.Rows.Select(r => r[orderKeyIndex]?.ToString()).ToHashSet();
 
-        var customers = dataSet.Tables.Single(t => t.TechnicalName == "Musteri");
+        var customers = dataSet.Tables.Single(t => t.TechnicalName == "MUSTERI");
         var lastOrderIndex = customers.Columns.FindIndex(c => c.TechnicalName == "SonSiparisNo");
 
         Assert.All(customers.Rows, row =>

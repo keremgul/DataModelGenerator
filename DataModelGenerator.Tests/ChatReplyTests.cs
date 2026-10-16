@@ -89,7 +89,7 @@ public class ChatReplyTests
         var chatPrompt = provider.Prompts.Single(p => p.Contains("Skill: Sohbet Yanıtı"));
 
         Assert.Contains("Eklenen tablo", chatPrompt);   // DIFF yerine geçti
-        Assert.Contains("Cari", chatPrompt);            // güncel model gönderildi
+        Assert.Contains("CARI", chatPrompt);            // güncel model gönderildi
         Assert.Contains("(uygulanamayan bir şey yok)", chatPrompt);
     }
 

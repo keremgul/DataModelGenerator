@@ -40,6 +40,7 @@ public class PromptLibrary
         // Yapısal kurallar ve kaynak/kesinlik sözleşmesi her prompt'ta aynı metinle verilir.
         sb.Replace("{{MODEL_RULES}}", Rules.ModelRules.PromptText);
         sb.Replace("{{SOURCE_RULES}}", Rules.SourcePolicy.PromptText);
+        sb.Replace("{{NAMING_RULES}}", Rules.NamingRules.Policy.Describe());
         return sb.ToString();
     }
 

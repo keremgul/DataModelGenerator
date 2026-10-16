@@ -37,6 +37,9 @@ public partial class App : Application
         SettingsStore = new AppSettingsStore();
         RuleSetStore = new RuleSetStore();
         ExcelExport = new ExcelExportService();
+
+        // Adlandırma kuralları ayar dosyasından gelir; üretim bu politikaya göre çalışır.
+        Core.Rules.NamingRules.UsePolicy(SettingsStore.Settings.Naming);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
