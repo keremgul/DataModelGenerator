@@ -337,6 +337,7 @@ public partial class ConnectionViewModel : ObservableObject, IRefreshable
         App.SettingsStore.Save();
 
         _main.UpdateConnectionStatus();
+        _main.CompleteStep(0);
         _main.SetStatus($"Aktif profil: {SelectedProfile.Name}");
         _main.NavigateNext();
     }

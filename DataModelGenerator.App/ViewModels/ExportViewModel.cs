@@ -18,6 +18,7 @@ public partial class ExportViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _statusIsError;
     [ObservableProperty] private bool _hasModel;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private string _staleWarning = string.Empty;
 
     public ObservableCollection<string> EntitySummaries { get; } = new();
 
@@ -41,6 +42,12 @@ public partial class ExportViewModel : ObservableObject, IRefreshable
 
         foreach (var entity in _session.Package.Model.Entities)
             EntitySummaries.Add($"{entity.TechnicalName} — {entity.Attributes.Count} alan");
+
+        // Önceki adımlarda değişiklik yapıldıysa çıktı eski modeli yansıtabilir.
+        StaleWarning = _main.HasStaleSteps
+            ? "Uyarı: bazı adımlar 'güncel değil' işaretli. Dışa aktarılan model, " +
+              "o adımlar yeniden çalıştırılmadan önceki halidir."
+            : string.Empty;
 
         StatusMessage = string.Empty;
     }
@@ -168,6 +175,7 @@ public partial class ExportViewModel : ObservableObject, IRefreshable
     {
         StatusMessage = message;
         StatusIsError = isError;
+        if (!isError) _main.CompleteStep(5);
         _main.SetStatus(message);
     }
 }

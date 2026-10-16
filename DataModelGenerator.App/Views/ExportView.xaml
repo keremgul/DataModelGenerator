@@ -15,6 +15,12 @@
                 <TextBlock Style="{StaticResource InfoText}"
                            Text="Uygulama hiçbir veritabanına bağlanmaz; tüm çıktılar dosya bazlıdır."/>
 
+                <Border Background="#FFF8E1" BorderBrush="#E0C97F" BorderThickness="1" CornerRadius="3"
+                        Padding="10,8" Margin="0,8,0,0"
+                        Visibility="{Binding StaleWarning, Converter={StaticResource NullToCollapsed}}">
+                    <TextBlock Text="{Binding StaleWarning}" TextWrapping="Wrap" Foreground="#5F4B00"/>
+                </Border>
+
                 <TextBlock Text="Mermaid ER Diyagramı" Style="{StaticResource SectionHeader}"/>
                 <TextBlock Style="{StaticResource InfoText}"
                            Text="Diyagramın Mermaid kodu düz metin dosyası olarak kaydedilir; başka bir dokümana yapıştırılabilir."/>

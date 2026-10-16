@@ -121,6 +121,10 @@ public partial class InputViewModel : ObservableObject, IRefreshable
 
         Renumber();
         _session.Input = new ProjectInput { Rules = validRules };
+
+        // Kural listesi değiştiğinde sonraki adımların çıktısı silinmez,
+        // "güncel değil" olarak işaretlenir.
+        _main.CompleteStep(1);
         _main.SetStatus($"{validRules.Count} kural hazır — üretim adımına geçildi.");
         _main.NavigateNext();
     }

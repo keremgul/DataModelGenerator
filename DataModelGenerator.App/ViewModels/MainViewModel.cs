@@ -4,10 +4,45 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace DataModelGenerator.App.ViewModels;
 
+public enum StepState
+{
+    /// <summary>Henüz çalıştırılmadı.</summary>
+    Pending,
+
+    /// <summary>Çalıştırıldı ve çıktısı güncel.</summary>
+    Completed,
+
+    /// <summary>Çalıştırıldı ama öncesinde bir şey değişti — çıktısı artık güncel değil.</summary>
+    Stale
+}
+
 public partial class StepItem : ObservableObject
 {
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private bool _isActive;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BadgeText))]
+    [NotifyPropertyChangedFor(nameof(StateText))]
+    private StepState _state = StepState.Pending;
+
+    public int Index { get; init; }
+
+    /// <summary>Adım başlığının yanındaki durum işareti.</summary>
+    public string BadgeText => State switch
+    {
+        StepState.Completed => "✓",
+        StepState.Stale => "!",
+        _ => "○"
+    };
+
+    public string StateText => State switch
+    {
+        StepState.Completed => "Tamamlandı — çıktısı güncel.",
+        StepState.Stale => "Güncel değil: önceki bir adımda değişiklik yapıldı. " +
+                           "Çıktı silinmedi, ama yeniden çalıştırılması gerekiyor.",
+        _ => "Henüz çalıştırılmadı."
+    };
 }
 
 public partial class MainViewModel : ObservableObject
@@ -35,15 +70,40 @@ public partial class MainViewModel : ObservableObject
             new ExportViewModel(_session, this)
         ];
 
-        foreach (var title in new[]
-                 {
-                     "1. Bağlantı", "2. Girdi", "3. Üretim",
-                     "4. Sorular", "5. Sohbet", "6. Dışa Aktar"
-                 })
-            Steps.Add(new StepItem { Title = title });
+        var titles = new[]
+        {
+            "1. Bağlantı", "2. Girdi", "3. Üretim",
+            "4. Sorular", "5. Sohbet", "6. Dışa Aktar"
+        };
+
+        for (var i = 0; i < titles.Length; i++)
+            Steps.Add(new StepItem { Title = titles[i], Index = i });
 
         NavigateToStep(0);
     }
+
+    /// <summary>
+    /// Bir adım başarıyla çalıştığında işaretlenir. Sonraki adımların çıktısı
+    /// silinmez; yalnızca "güncel değil" olarak işaretlenir.
+    /// </summary>
+    public void CompleteStep(int index)
+    {
+        if (index < 0 || index >= Steps.Count) return;
+
+        Steps[index].State = StepState.Completed;
+
+        foreach (var step in Steps.Where(s => s.Index > index && s.State == StepState.Completed))
+            step.State = StepState.Stale;
+    }
+
+    /// <summary>Adım geri alındığında veya girdisi bozulduğunda çağrılır.</summary>
+    public void InvalidateStepsAfter(int index)
+    {
+        foreach (var step in Steps.Where(s => s.Index > index && s.State == StepState.Completed))
+            step.State = StepState.Stale;
+    }
+
+    public bool HasStaleSteps => Steps.Any(s => s.State == StepState.Stale);
 
     public void NavigateToStep(int index)
     {
@@ -60,10 +120,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void GoToStep(string index)
-    {
-        if (int.TryParse(index, out var parsed)) NavigateToStep(parsed);
-    }
+    private void GoToStep(int index) => NavigateToStep(index);
 
     public void NavigateNext() => NavigateToStep(CurrentStepIndex + 1);
 

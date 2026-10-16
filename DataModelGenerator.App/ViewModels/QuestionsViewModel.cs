@@ -146,6 +146,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
             var package = await pipeline.ApplyAnswersAsync(_session.Context, answered, progress);
 
             _session.Package = package;
+            _main.CompleteStep(3);
 
             ProgressText = $"{answered.Count} cevap uygulandı — model son cevaplara göre güncellendi " +
                            $"(tur {package.RoundNumber}).";

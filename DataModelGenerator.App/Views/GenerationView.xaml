@@ -180,18 +180,6 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="Normalizasyon Notları">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
-                    <ItemsControl ItemsSource="{Binding NormalizationNotes}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Foreground="#444"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </TabItem>
-
             <TabItem Header="Öneriler">
                 <DockPanel>
                     <Border DockPanel.Dock="Bottom" Background="#F5F5F5" BorderBrush="#DDD"
@@ -238,20 +226,6 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="İlişkiler">
-                <DataGrid ItemsSource="{Binding Relationships}" AutoGenerateColumns="False" IsReadOnly="True"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Kaynak" Binding="{Binding FromEntity}" Width="150"/>
-                        <DataGridTextColumn Header="Hedef" Binding="{Binding ToEntity}" Width="150"/>
-                        <DataGridTextColumn Header="Kardinalite" Binding="{Binding Cardinality}" Width="110"/>
-                        <DataGridTextColumn Header="Ad" Binding="{Binding Name}" Width="120"/>
-                        <DataGridTextColumn Header="Kaynak Kural" Binding="{Binding SourceRuleIds[0]}" Width="110"/>
-                        <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
-
             <TabItem Header="Belirsizlikler">
                 <DataGrid ItemsSource="{Binding Ambiguities}" AutoGenerateColumns="False" IsReadOnly="True"
                           GridLinesVisibility="Horizontal" HeadersVisibility="Column">
@@ -266,32 +240,51 @@
                 </DataGrid>
             </TabItem>
 
+            <!-- Doğrulama + normalizasyon notları: ikisi de modelin sağlık raporu. -->
             <TabItem Header="Doğrulama">
-                <DataGrid ItemsSource="{Binding ValidationIssues}" AutoGenerateColumns="False" IsReadOnly="True"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Seviye" Binding="{Binding Severity}" Width="80">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground"
-                                            Value="{Binding Severity, Converter={StaticResource SeverityToBrush}}"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Kod" Binding="{Binding Code}" Width="200"/>
-                        <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="200"/>
-                        <DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <TabItem Header="Mermaid Kodu">
-                <TextBox Text="{Binding MermaidCode, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
-            </TabItem>
+                    <DataGrid Grid.Row="0" ItemsSource="{Binding ValidationIssues}" AutoGenerateColumns="False"
+                              IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Seviye" Binding="{Binding Severity}" Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"
+                                                Value="{Binding Severity, Converter={StaticResource SeverityToBrush}}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Kod" Binding="{Binding Code}" Width="200"/>
+                            <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="200"/>
+                            <DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
-            <TabItem Header="JSON">
-                <TextBox Text="{Binding ModelJson, Mode=OneWay}" Style="{StaticResource CodeBox}"/>
+                    <Border Grid.Row="1" Background="#FAFAFA" BorderBrush="#DDD" BorderThickness="0,1,0,0"
+                            Padding="12,8" MaxHeight="180"
+                            Visibility="{Binding NormalizationNotes, Converter={StaticResource CountToVisibility}}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Normalizasyon Notları" FontWeight="SemiBold"
+                                           Foreground="#444" Margin="0,0,0,4"/>
+                                <ItemsControl ItemsSource="{Binding NormalizationNotes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2"
+                                                       FontSize="12" Foreground="#555"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
             </TabItem>
         </TabControl>
 

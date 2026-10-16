@@ -18,7 +18,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private string _mermaidCode = string.Empty;
-    [ObservableProperty] private string _modelJson = string.Empty;
     [ObservableProperty] private string _roundInfo = string.Empty;
     [ObservableProperty] private bool _hasModel;
     [ObservableProperty] private bool _hasSuggestions;
@@ -29,8 +28,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     public ObservableCollection<string> NormalizationNotes { get; } = new();
     public ObservableCollection<Ambiguity> Ambiguities { get; } = new();
     public ObservableCollection<ValidationIssue> ValidationIssues { get; } = new();
-    public ObservableCollection<Relationship> Relationships { get; } = new();
-
     /// <summary>Kaynaksız, belirsiz veya normalizasyonu geçemediği için modele alınmayan öğeler.</summary>
     public ObservableCollection<PendingItem> PendingItems { get; } = new();
 
@@ -91,6 +88,7 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
             _session.Package = package;
 
             Display(package);
+            _main.CompleteStep(2);
             ProgressText = $"Üretim tamamlandı — {package.Model.Entities.Count} varlık, " +
                            $"{package.Model.Relationships.Count} ilişki, {package.Questions.Count} soru.";
             _main.SetStatus(ProgressText);
@@ -147,6 +145,7 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
 
             _session.Package = package;
             Display(package);
+            _main.CompleteStep(2);
 
             var applied = decisions.Count(d => d.Decision == SuggestionDecision.Accepted);
             var rejected = decisions.Count(d => d.Decision == SuggestionDecision.Rejected);
@@ -228,7 +227,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     private void Display(ModelPackage package)
     {
         MermaidCode = package.MermaidCode;
-        ModelJson = package.ModelJson;
         HasModel = package.Model.Entities.Count > 0;
         RoundInfo = $"Tur {package.RoundNumber} · {package.GeneratedAt:dd.MM.yyyy HH:mm}";
 
@@ -248,9 +246,6 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
         ValidationIssues.Clear();
         foreach (var issue in package.ValidationIssues.OrderByDescending(i => i.Severity))
             ValidationIssues.Add(issue);
-
-        Relationships.Clear();
-        foreach (var relationship in package.Model.Relationships) Relationships.Add(relationship);
 
         PendingItems.Clear();
         foreach (var item in package.PendingItems) PendingItems.Add(item);

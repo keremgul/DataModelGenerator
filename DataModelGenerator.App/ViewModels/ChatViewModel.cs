@@ -139,6 +139,7 @@ public partial class ChatViewModel : ObservableObject, IRefreshable
             Message = string.Empty;
 
             Turns.Add(ToItem(turn));
+            if (turn.Status != ChatTurnStatus.NotApplied) _main.CompleteStep(4);
 
             ProgressText = turn.Status == ChatTurnStatus.NotApplied
                 ? $"{turn.StatusText} — model üzerinde fark oluşmadı. Talebi daha açık yazmayı deneyin."

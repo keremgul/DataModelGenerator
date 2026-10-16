@@ -27,3 +27,6 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Duman testi ekran goruntuleri
+tools/shots/
