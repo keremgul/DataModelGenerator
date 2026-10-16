@@ -23,12 +23,16 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private bool _hasModel;
     [ObservableProperty] private bool _hasSuggestions;
     [ObservableProperty] private string _traceFilterText = string.Empty;
+    [ObservableProperty] private string _pendingCountText = string.Empty;
 
     public ObservableCollection<SuggestionItem> Suggestions { get; } = new();
     public ObservableCollection<string> NormalizationNotes { get; } = new();
     public ObservableCollection<Ambiguity> Ambiguities { get; } = new();
     public ObservableCollection<ValidationIssue> ValidationIssues { get; } = new();
     public ObservableCollection<Relationship> Relationships { get; } = new();
+
+    /// <summary>Kaynaksız, belirsiz veya normalizasyonu geçemediği için modele alınmayan öğeler.</summary>
+    public ObservableCollection<PendingItem> PendingItems { get; } = new();
 
     /// <summary>İzlenebilirlik tablosunda gösterilen satırlar (kaynak seçiliyse filtrelenmiş).</summary>
     public ObservableCollection<TraceEntry> TraceEntries { get; } = new();
@@ -247,6 +251,13 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
 
         Relationships.Clear();
         foreach (var relationship in package.Model.Relationships) Relationships.Add(relationship);
+
+        PendingItems.Clear();
+        foreach (var item in package.PendingItems) PendingItems.Add(item);
+        PendingCountText = PendingItems.Count == 0
+            ? "Beklemede öğe yok — modele giren her şeyin kaynağı var."
+            : $"{PendingItems.Count} öğe modele alınmadı. Her biri için soru üretildi; " +
+              "cevaplandıktan sonra modele girebilir.";
 
         // Serbest metin özet yerine yapılandırılmış izlenebilirlik tablosu.
         _trace = TraceabilityTable.Build(package, _session.Input);

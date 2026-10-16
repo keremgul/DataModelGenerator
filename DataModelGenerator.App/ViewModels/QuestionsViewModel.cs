@@ -23,6 +23,9 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
     public ObservableCollection<QuestionItem> AppliedQuestions { get; } = new();
     public ObservableCollection<Ambiguity> AutoResolved { get; } = new();
 
+    /// <summary>Cevap bekleyen ve bu yüzden modele alınmayan öğeler.</summary>
+    public ObservableCollection<PendingItem> PendingItems { get; } = new();
+
     public QuestionsViewModel(SessionState session, MainViewModel main)
     {
         _session = session;
@@ -34,6 +37,7 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
         Questions.Clear();
         AppliedQuestions.Clear();
         AutoResolved.Clear();
+        PendingItems.Clear();
 
         var package = _session.Package;
         if (package is null)
@@ -53,6 +57,8 @@ public partial class QuestionsViewModel : ObservableObject, IRefreshable
         foreach (var ambiguity in package.Ambiguities.Where(a =>
                      a.Impact == AmbiguityImpact.Low && a.AppliedDefault is not null))
             AutoResolved.Add(ambiguity);
+
+        foreach (var item in package.PendingItems) PendingItems.Add(item);
 
         HasQuestions = Questions.Count > 0;
         CanApplyAnswers = Questions.Count > 0 || AppliedQuestions.Count > 0;

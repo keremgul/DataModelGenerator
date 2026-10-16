@@ -76,7 +76,8 @@ public class ModelPipelineTests
     [Fact]
     public async Task GenerateAsync_YuksekEtkiliBelirsizlikIcinSoruUretir()
     {
-        var (pipeline, _) = Build();
+        var (pipeline, provider) = Build();
+        provider.AttributesResponse = FakeModelProvider.NormalizedAttributes;
 
         var package = await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
 
@@ -124,6 +125,7 @@ public class ModelPipelineTests
     public async Task ApplyAnswersAsync_PipelineiBastanDegilEtkilenenAdimdanCalistirir()
     {
         var (pipeline, provider) = Build();
+        provider.AttributesResponse = FakeModelProvider.NormalizedAttributes;
         var context = new PipelineContext { Input = SampleInput() };
         var package = await pipeline.GenerateAsync(context);
 
@@ -139,7 +141,8 @@ public class ModelPipelineTests
     [Fact]
     public async Task ApplyAnswersAsync_CevaplananBelirsizligiCozulmusIsaretler()
     {
-        var (pipeline, _) = Build();
+        var (pipeline, provider) = Build();
+        provider.AttributesResponse = FakeModelProvider.NormalizedAttributes;
         var context = new PipelineContext { Input = SampleInput() };
         var package = await pipeline.GenerateAsync(context);
 

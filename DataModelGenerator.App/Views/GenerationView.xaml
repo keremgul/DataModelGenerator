@@ -151,6 +151,35 @@
                 </Grid>
             </TabItem>
 
+            <!-- Modele alınmayan öğeler: kaynaksız, belirsiz veya normalizasyonu geçemeyen. -->
+            <TabItem Header="Beklemede">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding PendingCountText}"
+                               Style="{StaticResource InfoText}" Margin="12,10,12,6"/>
+
+                    <DataGrid ItemsSource="{Binding PendingItems}" AutoGenerateColumns="False" IsReadOnly="True"
+                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                              AutomationProperties.Name="BeklemedeListesi">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/>
+                            <DataGridTextColumn Header="Tür" Binding="{Binding KindText}" Width="110"/>
+                            <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="190"/>
+                            <DataGridTextColumn Header="Neden" Binding="{Binding ReasonText}" Width="150">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#8C1D18"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Şüphe kaynağı" Binding="{Binding SourceText}" Width="120"/>
+                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Explanation}" Width="*"/>
+                            <DataGridTextColumn Header="Sorulan soru" Binding="{Binding Question}" Width="240"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
             <TabItem Header="Normalizasyon Notları">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
                     <ItemsControl ItemsSource="{Binding NormalizationNotes}">

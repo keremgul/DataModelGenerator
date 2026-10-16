@@ -49,5 +49,32 @@ public class PendingItem
 
     public List<string> SuggestedAnswers { get; set; } = new();
 
+    /// <summary>
+    /// Öğe her turda yeniden üretilir; aynı öğenin aynı soruyu ikinci kez
+    /// doğurmaması için tur bağımsız kimliği budur.
+    /// </summary>
+    public string Signature => $"BEK:{Kind}:{Target}:{Reason}";
+
+    /// <summary>Kullanıcıya gösterilen kısa tür etiketi.</summary>
+    public string KindText => Kind switch
+    {
+        PendingItemKind.Entity => "Tablo",
+        PendingItemKind.Attribute => "Alan",
+        PendingItemKind.Relationship => "İlişki",
+        _ => "Kural çelişkisi"
+    };
+
+    public string ReasonText => Reason switch
+    {
+        PendingReason.NoSource => "Kaynaksız",
+        PendingReason.Uncertain => "Belirsiz",
+        _ => $"Normalizasyon ({ViolatedRule})"
+    };
+
+    /// <summary>Şüphenin hangi kurallardan doğduğu — rozet olarak gösterilir.</summary>
+    public string SourceText => SourceRuleIds.Count > 0
+        ? string.Join(", ", SourceRuleIds)
+        : "kaynak yok";
+
     public override string ToString() => $"[{Kind}] {Target}: {Explanation}";
 }

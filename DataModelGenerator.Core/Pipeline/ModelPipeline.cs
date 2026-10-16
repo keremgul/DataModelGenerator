@@ -967,6 +967,13 @@ public class ModelPipeline
     // ---------------------------------------------------------------- adım 6
     private async Task GenerateQuestionsAsync(PipelineContext context, CancellationToken ct)
     {
+        // Beklemede listesi LLM'e sorulmadan doğrudan soruya çevrilir: öğe
+        // zaten modele alınmadı, eksik olan yalnızca kullanıcının kararı.
+        var fromPending = PendingQuestions.Sync(context.PendingItems, context.Questions, context.RoundNumber);
+        if (fromPending > 0)
+            context.NormalizationNotes.Add(
+                $"Beklemede listesindeki {fromPending} öğe için soru üretildi; bu öğeler modele eklenmedi.");
+
         var open = context.Ambiguities
             .Where(a => a.Impact == AmbiguityImpact.High && !a.IsResolved)
             .Where(a => context.Questions.All(q => q.AmbiguityId != a.Id))
@@ -974,8 +981,11 @@ public class ModelPipeline
 
         if (open.Count == 0)
         {
-            context.NormalizationNotes.Add(
-                "Sorulacak yeni bir yüksek etkili belirsizlik bulunamadı; model bu haliyle kararlı görünüyor.");
+            if (fromPending > 0)
+                context.QuestionRounds++;
+            else
+                context.NormalizationNotes.Add(
+                    "Sorulacak yeni bir yüksek etkili belirsizlik bulunamadı; model bu haliyle kararlı görünüyor.");
             return;
         }
 
@@ -1026,7 +1036,7 @@ public class ModelPipeline
             added++;
         }
 
-        if (added > 0)
+        if (added + fromPending > 0)
             context.QuestionRounds++;
         else
             context.NormalizationNotes.Add(

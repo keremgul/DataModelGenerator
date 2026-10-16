@@ -169,6 +169,34 @@ internal class FakeModelProvider : IModelProvider
         }
         """;
 
+    /// <summary>
+    /// Normalizasyonu temiz geçen alan listesi. Varsayılan yanıttaki "Ad Soyad"
+    /// 1NF-1 gereği beklemede listesine düşer; soru döngüsünü sınayan testler
+    /// bunun gürültüsü olmadan çalışmak için bu yanıtı kullanır.
+    /// </summary>
+    public const string NormalizedAttributes = """
+        {
+          "entities": [
+            {
+              "name": "Müşteri",
+              "attributes": [
+                { "name": "Müşteri No", "primaryKey": true, "required": true, "unique": true, "sourceRuleIds": ["BR-1"], "confidence": 0.9 },
+                { "name": "Ad", "required": true, "sourceRuleIds": ["BR-1"], "confidence": 0.85 },
+                { "name": "Soyad", "required": true, "sourceRuleIds": ["BR-1"], "confidence": 0.85 }
+              ]
+            },
+            {
+              "name": "Sipariş",
+              "attributes": [
+                { "name": "Sipariş No", "primaryKey": true, "required": true, "unique": true, "sourceRuleIds": ["BR-2"], "confidence": 0.9 },
+                { "name": "Tutar", "required": true, "sourceRuleIds": ["BR-2"], "confidence": 0.8 },
+                { "name": "Müşteri No", "foreignKey": true, "references": "Müşteri", "referencesAttribute": "MusteriNo", "required": true, "sourceRuleIds": ["BR-2"], "confidence": 0.8 }
+              ]
+            }
+          ]
+        }
+        """;
+
     private const string GapsResponse = """
         {
           "ambiguities": [

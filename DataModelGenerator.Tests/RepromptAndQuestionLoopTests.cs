@@ -17,7 +17,9 @@ public class RepromptAndQuestionLoopTests
 
     private static (ModelPipeline Pipeline, FakeModelProvider Provider) Build()
     {
-        var provider = new FakeModelProvider();
+        // Soru döngüsü sınanıyor: beklemede listesinden doğan sorular gürültü
+        // yapmasın diye normalizasyonu temiz geçen alan listesi kullanılıyor.
+        var provider = new FakeModelProvider { AttributesResponse = FakeModelProvider.NormalizedAttributes };
         return (new ModelPipeline(provider, new ProviderConnectionSettings(), "fake-model"), provider);
     }
 
