@@ -20,6 +20,11 @@
                 <TextBlock Text="{Binding RoundInfo}" VerticalAlignment="Center" Margin="16,0,0,0"
                            Foreground="#666" FontSize="12"/>
             </StackPanel>
+            <!-- Adım göstergesindeki "3. Üretim" adımının altında çalışan
+                 pipeline adımları; ayrıntısı docs/pipeline.md içinde. -->
+            <TextBlock Text="{Binding PipelineStages}" FontSize="11" Foreground="#8894A8"
+                       TextWrapping="Wrap" Margin="0,8,0,0"
+                       ToolTip="Pipeline adımları. Akış diyagramları için: docs/pipeline.md"/>
             <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
                          Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
             <TextBlock Text="{Binding ProgressText}" Style="{StaticResource InfoText}" Margin="0,4,0,0"/>

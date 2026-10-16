@@ -552,7 +552,7 @@ public class ModelPipeline
         for (var stage = fromStage; stage <= PipelineStage.Serialization; stage++)
         {
             ct.ThrowIfCancellationRequested();
-            progress?.Report($"{(int)stage + 1}/7 — {PipelineStageMap.DisplayName(stage)}…");
+            progress?.Report($"{(int)stage + 1}/{PipelineStageMap.StageCount} — {PipelineStageMap.DisplayName(stage)}…");
 
             switch (stage)
             {
@@ -849,7 +849,7 @@ public class ModelPipeline
     // ---------------------------------------------------------------- adım 4
     private async Task CheckNormalizationAsync(PipelineContext context, CancellationToken ct)
     {
-        context.NormalizationNotes.RemoveAll(n => !n.StartsWith("Reprompt notu:", StringComparison.Ordinal));
+        context.NormalizationNotes.RemoveAll(n => !n.StartsWith("Model notu:", StringComparison.Ordinal));
 
         var prompt = _prompts.Render("normalization", new Dictionary<string, string>
         {

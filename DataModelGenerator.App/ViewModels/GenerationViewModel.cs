@@ -47,6 +47,14 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
 
     partial void OnSelectedTraceSourceChanged(TraceSource? value) => ApplyTraceFilter();
 
+    /// <summary>
+    /// Bu adımın altında çalışan pipeline adımları. Ayrıntısı docs/pipeline.md
+    /// içindeki akış diyagramlarında; buradaki liste oradaki sırayla aynıdır.
+    /// </summary>
+    public string PipelineStages { get; } = string.Join("  ›  ",
+        Enum.GetValues<PipelineStage>()
+            .Select(stage => $"{(int)stage + 1}. {PipelineStageMap.DisplayName(stage)}"));
+
     public GenerationViewModel(SessionState session, MainViewModel main)
     {
         _session = session;
