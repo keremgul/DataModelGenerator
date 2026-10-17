@@ -38,6 +38,15 @@ public class ModelPackage
     /// <summary>Son sohbet turu — direktifleri ve modelde oluşan gerçek değişikliği taşır.</summary>
     public ChatTurn? LastChatTurn { get; set; }
 
+    /// <summary>
+    /// Artımlı geliştirmede önceki ve yeni model arasındaki fark. Kullanıcıya
+    /// neyin eklendiği, değiştiği ve kaldırıldığı bu özetle gösterilir.
+    /// </summary>
+    public ModelChangeSet? LastChanges { get; set; }
+
+    /// <summary>Son turda kural listesine eklenen yeni kuralların kimlikleri.</summary>
+    public List<string> AddedRuleIds { get; set; } = new();
+
     public IEnumerable<Rules.AnswerCompliance> UnsatisfiedAnswers =>
         AnswerCompliance.Where(a => !a.IsSatisfied);
 

@@ -58,12 +58,37 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="24,8,24,0">
-            <Button Content="Yukarı Taşı" Command="{Binding MoveUpCommand}"/>
-            <Button Content="Aşağı Taşı" Command="{Binding MoveDownCommand}"/>
-            <Button Content="Seçili Kuralı Sil" Command="{Binding RemoveRuleCommand}"/>
-            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource InfoText}"
-                       VerticalAlignment="Center" Margin="16,0,0,0"/>
+        <StackPanel Grid.Row="3" Margin="24,8,24,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Yukarı Taşı" Command="{Binding MoveUpCommand}"/>
+                <Button Content="Aşağı Taşı" Command="{Binding MoveDownCommand}"/>
+                <Button Content="Seçili Kuralı Sil" Command="{Binding RemoveRuleCommand}"/>
+                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource InfoText}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </StackPanel>
+
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,6,0,0"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+
+            <!-- Artımlı güncellemede önceki ve yeni model arasındaki fark. -->
+            <Border Background="#E8F5E9" BorderBrush="#A7C796" BorderThickness="1" CornerRadius="3"
+                    Padding="10,8" Margin="0,8,0,0" MaxHeight="120"
+                    Visibility="{Binding ChangeSummary, Converter={StaticResource NullToCollapsed}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ChangeSummary}" FontWeight="SemiBold"
+                                   Foreground="#1B5E20" FontSize="12" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding Changes}" Margin="0,2,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#2C4218"
+                                               TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
         </StackPanel>
 
         <Border Grid.Row="4" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="0,1,0,0"
@@ -71,6 +96,11 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="← Geri" Command="{Binding BackCommand}"/>
                 <Button Content="Modeli Üret →" Command="{Binding NextCommand}" Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Kuralları Ekle ve Modeli Güncelle"
+                        Command="{Binding ExtendCommand}"
+                        Visibility="{Binding HasModel, Converter={StaticResource BoolToVisibility}}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                        ToolTip="Mevcut model sıfırdan üretilmez; yalnızca yeni kuralların gerektirdiği değişiklikler yapılır."/>
             </StackPanel>
         </Border>
     </Grid>

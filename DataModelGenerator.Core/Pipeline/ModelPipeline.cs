@@ -42,6 +42,71 @@ public class ModelPipeline
     }
 
     /// <summary>
+    /// Artımlı geliştirme: mevcut modelin üzerine yeni business rule'lar eklenir.
+    /// Model sıfırdan üretilmez — mevcut hali LLM'e bağlam olarak gider ve yalnızca
+    /// yeni kuralların gerektirdiği delta istenir. Önceki tablo, alan ve ilişkiler
+    /// yeni kural açıkça gerektirmedikçe korunur.
+    /// </summary>
+    public async Task<ModelPackage> ExtendAsync(PipelineContext context,
+        IReadOnlyList<string> newRuleTexts,
+        IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        if (context.Model.Entities.Count == 0)
+            throw new InvalidOperationException("Önce bir model üretilmelidir.");
+
+        var texts = newRuleTexts
+            .Select(text => text.Trim())
+            .Where(text => text.Length > 0)
+            .ToList();
+
+        if (texts.Count == 0)
+            throw new InvalidOperationException("Eklenecek kural yok.");
+
+        var before = ModelJson.Deserialize(ModelJson.Serialize(context.Model))!;
+        var existingRules = FormatRules(context.Input);
+
+        // Yeni kurallar listeye eklenir; kaynak izleri BR-xx olarak devam eder.
+        var added = new List<BusinessRule>();
+        foreach (var text in texts)
+        {
+            var rule = new BusinessRule
+            {
+                Id = context.Input.NextRuleId(RuleOrigin.User),
+                Origin = RuleOrigin.User,
+                Text = text
+            };
+
+            context.Input.Rules.Add(rule);
+            added.Add(rule);
+        }
+
+        // Yeni kurallar mevcutlarla çelişiyor mu: çelişki modele girmeden soruya döner.
+        progress?.Report("Yeni kurallar mevcut kurallarla karşılaştırılıyor…");
+        await AnalyzeRuleRelationsAsync(context, ct);
+        AddRuleConflictQuestions(context);
+
+        progress?.Report("Model yeni kurallara göre genişletiliyor…");
+        var prompt = _prompts.Render("extend", new Dictionary<string, string>
+        {
+            ["MODEL"] = ModelJson.Serialize(context.Model),
+            ["EXISTING_RULES"] = existingRules,
+            ["NEW_RULES"] = string.Join("\n", added.Select(r => $"- {r.Id}: {r.Text}")),
+            ["RULE_RELATIONS"] = FormatRuleRelations(context)
+        });
+
+        var response = await _llm.SendAsync(PipelineStage.Extraction, prompt, ct);
+        MergeModelResponse(context, response, added[0].Id);
+
+        progress?.Report("Model doğrulanıyor…");
+        ApplyDeterministicLayer(context);
+
+        var package = await RunAsync(context, PipelineStage.NormalizationCheck, progress, ct);
+        package.LastChanges = ModelChangeSet.Compare(before, context.Model);
+        package.AddedRuleIds = added.Select(r => r.Id).ToList();
+        return package;
+    }
+
+    /// <summary>
     /// Kullanıcının tetiklediği ek soru turu: belirsizlikler yeniden taranır ve
     /// daha önce sorulmamış sorular üretilir. Otomatik çalışmaz — modeli daha ileri
     /// götürmek isteyip istemediğine kullanıcı karar verir.

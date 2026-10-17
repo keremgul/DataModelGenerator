@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DataModelGenerator.App.Dialogs;
 using DataModelGenerator.Core.Models;
+using DataModelGenerator.Core.Pipeline;
+using DataModelGenerator.Core.Services;
 using DataModelGenerator.Core.Storage;
 
 namespace DataModelGenerator.App.ViewModels;
@@ -14,8 +17,17 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private string _newRuleText = string.Empty;
     [ObservableProperty] private BusinessRule? _selectedRule;
     [ObservableProperty] private string _statusMessage = string.Empty;
+    [ObservableProperty] private bool _isBusy;
+
+    /// <summary>Model üretilmişse yeni kurallar sıfırdan değil, üzerine eklenebilir.</summary>
+    [ObservableProperty] private bool _hasModel;
+
+    [ObservableProperty] private string _changeSummary = string.Empty;
 
     public ObservableCollection<BusinessRule> Rules { get; } = new();
+
+    /// <summary>Son artımlı güncellemede modelde oluşan fark.</summary>
+    public ObservableCollection<string> Changes { get; } = new();
 
     public InputViewModel(SessionState session, MainViewModel main)
     {
@@ -25,7 +37,15 @@ public partial class InputViewModel : ObservableObject, IRefreshable
         foreach (var rule in session.Input.Rules) Rules.Add(rule);
     }
 
-    public void Refresh() => StatusMessage = string.Empty;
+    public void Refresh()
+    {
+        StatusMessage = string.Empty;
+        HasModel = _session.Package is not null && _session.Package.Model.Entities.Count > 0;
+
+        // Dışarıdan (cevap, sohbet) eklenen kurallar da listede görünmeli.
+        foreach (var rule in _session.Input.Rules.Where(r => Rules.All(x => x.Id != r.Id)))
+            Rules.Add(rule);
+    }
 
     /// <summary>
     /// Tek satır da olabilir, yapıştırılmış çok satırlı metin de. Metin her
@@ -99,6 +119,97 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     }
 
     private string NextRuleId() => $"BR-{Rules.Count(r => r.Origin == RuleOrigin.User) + 1:00}";
+
+    /// <summary>
+    /// Mevcut modelin üzerine yeni kurallar ekler. Model sıfırdan üretilmez;
+    /// önceki tablo, alan ve ilişkiler yeni kural gerektirmedikçe korunur.
+    /// </summary>
+    [RelayCommand]
+    private async Task ExtendAsync()
+    {
+        if (_session.Context is null || _session.Package is null)
+        {
+            StatusMessage = "Önce bir model üretmelisiniz.";
+            return;
+        }
+
+        // Henüz modele yansımamış kurallar: listede olup kaynak listesinde olmayanlar.
+        var applied = _session.Context.Input.Rules.Select(r => r.Text.Trim()).ToHashSet();
+        var pending = Rules
+            .Where(r => !string.IsNullOrWhiteSpace(r.Text) && !applied.Contains(r.Text.Trim()))
+            .Select(r => r.Text)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(NewRuleText))
+        {
+            pending.AddRange(RuleTextParser.Parse(NewRuleText).Select(r => r.Text));
+            NewRuleText = string.Empty;
+        }
+
+        if (pending.Count == 0)
+        {
+            StatusMessage = "Eklenecek yeni kural yok. Önce kural yazıp 'Ekle' deyin.";
+            return;
+        }
+
+        IsBusy = true;
+        var progress = new Progress<string>(message => StatusMessage = message);
+
+        try
+        {
+            var pipeline = _session.CreatePipeline();
+            var package = await pipeline.ExtendAsync(_session.Context, pending, progress);
+
+            _session.Package = package;
+            _main.CompleteStep(1);
+
+            SyncRulesFromContext();
+            ShowChanges(package);
+
+            StatusMessage = $"{package.AddedRuleIds.Count} yeni kural uygulandı — " +
+                            $"{package.LastChanges?.TotalChanges ?? 0} değişiklik (tur {package.RoundNumber}).";
+            _main.SetStatus(StatusMessage);
+        }
+        catch (PipelineException ex)
+        {
+            StatusMessage = ex.Message;
+            ApiLogDialog.Show($"Model güncelleme hatası — {PipelineStageMap.DisplayName(ex.Stage)}",
+                string.IsNullOrWhiteSpace(ex.RawOutput) ? ex.Message : $"{ex.Message}\n\n{ex.RawOutput}",
+                ApiLogger.LastEntry);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Beklenmedik hata: {ex.Message}";
+            ApiLogDialog.Show("Model Güncellenemedi", ex, ApiLogger.LastEntry);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>Pipeline kural kimliklerini yeniden numaralandırmış olabilir.</summary>
+    private void SyncRulesFromContext()
+    {
+        Rules.Clear();
+        foreach (var rule in _session.Context!.Input.Rules) Rules.Add(rule);
+    }
+
+    private void ShowChanges(ModelPackage package)
+    {
+        Changes.Clear();
+        var changes = package.LastChanges;
+
+        if (changes is null || changes.IsEmpty)
+        {
+            ChangeSummary = "Yeni kurallar modelde bir değişiklik gerektirmedi.";
+            return;
+        }
+
+        ChangeSummary = $"Önceki modele göre {changes.TotalChanges} değişiklik:";
+        foreach (var line in changes.Describe().Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            Changes.Add(line.Trim());
+    }
 
     [RelayCommand]
     private void Back() => _main.NavigateBack();

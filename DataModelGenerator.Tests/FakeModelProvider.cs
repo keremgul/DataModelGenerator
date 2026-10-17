@@ -43,6 +43,11 @@ internal class FakeModelProvider : IModelProvider
             Stages.Add("reprompt");
             return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
+        if (systemPrompt.Contains("ELİNDE ÇALIŞAN BİR MODEL VAR"))
+        {
+            Stages.Add("extend");
+            return Task.FromResult(ExtendResponse);
+        }
         if (systemPrompt.Contains("Skill: Sohbet Yanıtı"))
         {
             Stages.Add("chat");
@@ -102,6 +107,26 @@ internal class FakeModelProvider : IModelProvider
         Stages.Add("bilinmeyen");
         return Task.FromResult("{}");
     }
+
+    /// <summary>Artımlı geliştirme: yalnızca yeni kuralın gerektirdiği delta.</summary>
+    public string ExtendResponse { get; set; } = """
+        {
+          "entities": [
+            {
+              "name": "Fatura",
+              "description": "Müşteriye kesilen ödeme belgesi",
+              "sources": ["BR-3"],
+              "confidence": "kesin",
+              "attributes": [
+                { "name": "ID", "primaryKey": true, "required": true, "unique": true, "sources": ["BR-3"], "confidence": "kesin" },
+                { "name": "MUSTERIID", "foreignKey": true, "references": "MUSTERI", "referencesAttribute": "ID", "required": true, "sources": ["BR-3"], "confidence": "kesin" }
+              ]
+            }
+          ],
+          "relationships": [],
+          "notes": []
+        }
+        """;
 
     /// <summary>Sohbet mesajının çevrileceği direktif listesi.</summary>
     public string RouterResponse { get; set; } = """{"directives":[],"unsupported":[]}""";
