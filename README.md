@@ -49,13 +49,34 @@ Komut `publish/DataModelGenerator-vX.Y.Z-win-x64/` klasörünü ve aynı adlı z
 ## Kullanım akışı
 
 1. **Bağlantı** — Sağlayıcı seçin (OpenAI, Anthropic, Google Gemini, Azure OpenAI, Ollama, özel endpoint), hazır listeden model seçin veya adını yazın, API anahtarını girin ve "Bağlantıyı Test Et" ile doğrulayın. Test başarılı olunca profil kaydedilebilir.
-2. **Girdi** — Numaralı business rule listesi (tek tek ya da serbest metin yapıştırıp ayrıştırarak). Kurallar satır satır değil, aralarındaki anlam ilişkisiyle birlikte değerlendirilir; çelişen veya tekrar eden kurallar size soru olarak döner.
+2. **Girdi** — Numaralı business rule listesi (tek tek ya da serbest metin yapıştırıp ayrıştırarak). Kurallar satır satır değil, aralarındaki anlam ilişkisiyle birlikte değerlendirilir; çelişen veya tekrar eden kurallar size soru olarak döner. İsterseniz konuyla ilgili **mevcut yapıyı anlatan bir `.md` dosyası** yükleyin: oradaki tablolar yeniden üretilmez, yeni yapılar bunlarla ilişkilendirilir.
 3. **Üretim** — Sekiz adımlı zincir çalışır (bkz. [docs/pipeline.md](docs/pipeline.md)). Sonuçlar sekmelerde görünür: ER diyagramı, özet (izlenebilirlik tablosu), beklemede, öneriler, belirsizlikler, doğrulama.
-4. **Sorular** — Belirsizlikler ve beklemede listesi için üretilen soruları cevaplayın. Önerilen cevaplar kopyalanabilir ve tek tıkla kullanılabilir; model yalnızca etkilenen adımdan itibaren kısmen güncellenir. Cevabınız bağlayıcı kısıttır ve modelde karşılık bulup bulmadığı denetlenir.
+4. **Sorular** — Belirsizlikler ve beklemede listesi için üretilen soruları cevaplayın. Sorular **mantıksal yapıya** odaklanır: ilişkiler, kardinalite, zorunluluk, iş kuralı kısıtları, tarihçe ihtiyacı. Önerilen cevaplar kopyalanabilir ve tek tıkla kullanılabilir; model yalnızca etkilenen adımdan itibaren kısmen güncellenir. Cevabınız bağlayıcı kısıttır ve modelde karşılık bulup bulmadığı denetlenir.
 5. **Sohbet** — Modelde ne değişsin, yazın. Talep yapılandırılmış direktiflere çevrilir; yeniden adlandırma ve kaldırma gibi işlemler LLM'e hiç gitmeden doğrudan uygulanır. Sonuç modelin "yaptım" demesiyle değil, **önceki ve sonraki hali arasındaki gerçek diff** ile doğrulanır.
 6. **Dışa aktarma** — Mermaid kodu (.mmd), model JSON'u ve örnek veri simülasyonu (her varlık ayrı sekme olacak şekilde .xlsx).
 
 Üstteki adım göstergesi hangi adımın tamamlandığını (✓) ve geri dönüp bir şey değiştirdiğinizde hangi adımın **güncel olmadığını** (!) gösterir. Sonraki adımların çıktısı silinmez, yalnızca işaretlenir.
+
+### Artımlı geliştirme
+
+Model üretildikten sonra Girdi adımına dönüp yeni kural ekleyebilir ve **"Kuralları Ekle ve Modeli Güncelle"** diyebilirsiniz. Model sıfırdan üretilmez: mevcut hali bağlam olarak gider ve yalnızca yeni kuralların gerektirdiği değişiklik yapılır. Önceki tablo, alan ve ilişkiler yeni kural açıkça gerektirmedikçe korunur — silinmez, yeniden adlandırılmaz. Sonuçta önceki ve yeni model arasındaki fark (eklenen/kaldırılan tablo ve alanlar) özet olarak gösterilir.
+
+## İsimlendirme standardı
+
+Tüm tablo ve alan adları **büyük harf** ve **Türkçe karaktersizdir**: `MUSTERI`, `MUSTERINO`, `MUSTERIID`. Kural prompt'a yazılır ama ona güvenilmez — her model yanıtından sonra adlar kod tarafında denetlenip düzeltilir, tablo adı değişirse ilişkiler ve yabancı anahtar referansları yeniden bağlanır.
+
+Standart `%AppData%\DataModelGenerator\settings.json` içindeki `Naming` bölümünden değiştirilebilir:
+
+| Ayar | Varsayılan | Diğer değerler |
+|---|---|---|
+| `Case` | `Upper` | `Lower`, `Pascal` |
+| `Separator` | `None` (`MUSTERINO`) | `Underscore` (`MUSTERI_NO`) |
+| `FoldTurkish` | `true` | `false` |
+| `MaxLength` | `0` (sınırsız) | ör. `30` |
+| `PrimaryKeyName` | `ID` | — |
+| `ForeignKeySuffix` | `ID` | — |
+
+İlişki ve yabancı anahtar adlandırmasının tek kaynağı [`skills/relationship-naming.md`](skills/relationship-naming.md) dosyasıdır: `<TABLOADI>ID` kalıbı ilişkinin kendisidir, aynı tabloya birden çok referans için `<ROL><TABLOADI>ID` kullanılır (`GONDERENMUSTERIID`). Bu dosya model üretimi, soru üretimi ve sohbet prompt'larına bağlam olarak gider; kod tarafı kalıba uyan alanı otomatik yabancı anahtar sayar, mükerrer ilişkileri eler ve hedefi bulunamayan referans için uyarı üretir.
 
 ## Mimari
 

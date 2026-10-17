@@ -14,6 +14,7 @@ pipeline adımlarını gösterir.
 |---|---|---|
 | 1. Bağlantı | — | — |
 | 2. Girdi | — | — |
+| 2. Girdi (kural ekle) | `ExtendAsync` | kural ilişki analizi + `extend` prompt'u, ardından 5 → 8 |
 | 3. Üretim | `GenerateAsync` | 1 → 8 (hepsi) |
 | 3. Üretim (öneri uygula) | `ApplySuggestionsAsync` → `RepromptAsync` | 5 → 8 |
 | 4. Sorular | `ApplyAnswersAsync` | etkilenen adımdan → 8 |
@@ -120,9 +121,37 @@ cevap uygulandığında kendiliğinden tetiklenmez (sonsuz soru döngüsünü ö
 1. `RuleEngine.Normalize` — teknik adlandırma, PK/FK tamamlama.
 2. `ModelMerger.CreateJunctionTables` — N-M ilişkiler için ara tablo.
 3. `ModelMerger.SyncForeignKeys` + `RuleEngine.RelinkReferences`.
-4. `NormalizationEngine.Apply` — `skills/NORMALIZATION_RULES.md` kurallarını
+4. `NamingEnforcer.Enforce` — adlar politikaya uydurulur, tablo adı değiştiyse
+   ilişkiler ve yabancı anahtar referansları yeniden bağlanır.
+5. `RelationshipRules.Apply` — `<TABLOADI>ID` kalıbına uyan alan yabancı anahtar
+   sayılır, eksik ilişki kurulur, mükerrer tanım elenir, hedefi bulunamayan
+   referans uyarıya döner.
+6. `NormalizationEngine.Apply` — `skills/NORMALIZATION_RULES.md` kurallarını
    sırayla işletir; geçemeyen alan **modelden çıkarılır** ve beklemede listesine alınır.
-5. `ModelValidator.Validate`.
+7. `ModelValidator.Validate`.
+
+## Artımlı geliştirme akışı
+
+Model üretildikten sonra yeni kural eklendiğinde sekiz adımlı zincir baştan
+çalışmaz:
+
+```mermaid
+flowchart TD
+    NR["Yeni business rule'lar"] --> RA["1 · Kural ilişki analizi<br/>yeni kurallar mevcutlarla karşılaştırılır"]:::llm
+    RA -- "çelişki" --> Q[("Beklemede + soru")]:::pending
+    RA --> EX["extend.txt<br/>girdi: mevcut model + uygulanmış kurallar + yeni kurallar<br/>çıktı: yalnızca delta"]:::llm
+
+    EX --> MG["Birleştirme<br/>dönmeyen hiçbir şey silinmez<br/>silme yalnızca removedFields/Entities/Relationships ile"]:::code
+    MG --> DL["Deterministik katman<br/>adlandırma · ilişki · normalizasyon · doğrulama"]:::code
+    DL --> ST["5 → 8<br/>normalizasyon denetimi · belirsizlik · soru · çıktı"]:::llm
+    ST --> DF["ModelChangeSet.Compare<br/>önceki ↔ yeni model"]:::guard
+    DF --> OUT["Kullanıcıya fark özeti:<br/>eklenen/kaldırılan tablo ve alanlar"]
+
+    classDef llm fill:#E8EFFB,stroke:#2F5496,color:#1F3864
+    classDef code fill:#EBF5E8,stroke:#6C8256,color:#2C4218
+    classDef guard fill:#FFF8E1,stroke:#E0C97F,color:#5F4B00
+    classDef pending fill:#FDECEA,stroke:#F0B4AE,color:#8C1D18
+```
 
 ## Sohbet akışı (hedefli değişiklik)
 
