@@ -66,9 +66,7 @@ public static class PendingQuestions
         _ => AmbiguityKind.Other
     };
 
+    /// <summary>Aynı soru farklı kelimelerle de sorulmuş olabilir.</summary>
     private static bool SameText(string first, string second) =>
-        string.Equals(Fold(first), Fold(second), StringComparison.OrdinalIgnoreCase);
-
-    private static string Fold(string value) =>
-        new(NamingRules.FoldTurkish(value).Where(char.IsLetterOrDigit).ToArray());
+        QuestionSimilarity.AreSame(first, second);
 }

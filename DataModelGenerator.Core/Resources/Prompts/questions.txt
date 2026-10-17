@@ -8,13 +8,19 @@ MODEL:
 YÜKSEK ETKİLİ BELİRSİZLİKLER:
 {{AMBIGUITIES}}
 
-DAHA ÖNCE SORULMUŞ SORULAR (ve varsa cevapları):
+BUNLARI TEKRAR SORMA — daha önce sorulmuş sorular (cevaplanmış ve cevaplanmamış):
 {{ASKED}}
 
 GÖREV:
 - Yukarıda sorulmuş sorulardan herhangi birini tekrar etme; aynı konuyu farklı kelimelerle de sorma. Cevabı alınmış bir noktayı yeniden sorma.
 - Her belirsizlik için tam olarak bir soru üret ve "ambiguityId" alanına ilgili belirsizliğin ID'sini yaz.
+- **Sorular MANTIKSAL YAPIYA odaklanır:** varlıklar arası ilişkiler, kardinalite
+  (1-1, 1-N, N-N), zorunluluk, iş kuralı kaynaklı kısıtlar, tarihçe/versiyonlama ihtiyacı.
+- **Alan tipi sorusu sorma** (VARCHAR kaç karakter, sayı mı metin mi vb.); bu model
+  tip bilgisi tutmaz. Tipe benzeyen bir soruyu yalnızca iş mantığını etkiliyorsa sor:
+  "tutar negatif olabilir mi", "aynı müşteri iki kez kaydedilebilir mi" gibi.
 - Soru, veri modelleme jargonu bilmeyen bir iş analistinin cevaplayabileceği sadelikte olmalı.
+  Kardinalite sorarken "1-N" demek yerine "bir müşterinin birden çok siparişi olabilir mi" diye sor.
 - "reason" alanında bu sorunun neden sorulduğunu ve cevabın modeli nasıl değiştireceğini bir cümleyle açıkla.
 - Mümkünse 2-4 somut seçenek ver; seçenekler birbirini dışlayan, net ifadeler olsun.
 - Soruları tek soruda birleştirme; her belirsizlik ayrı sorulur.
