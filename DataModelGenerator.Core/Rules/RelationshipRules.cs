@@ -95,10 +95,22 @@ public static class RelationshipRules
                     continue;
                 }
 
-                // Hedef yalnızca mevcut yapı dosyasında varsa model içinde bağlanamaz.
+                // Hedef yalnızca mevcut yapı dosyasında varsa referans geçerlidir
+                // ama modelde ilişki çizilemez; uyarı verilmez.
                 if (model.FindEntity(match.TargetEntity) is null)
                 {
-                    ReportMissingTarget(entity, attribute, match.TargetEntity, pending, notes);
+                    if (!external.Contains(match.TargetEntity, StringComparer.OrdinalIgnoreCase))
+                    {
+                        ReportMissingTarget(entity, attribute, match.TargetEntity, pending, notes);
+                        continue;
+                    }
+
+                    attribute.IsForeignKey = true;
+                    attribute.ReferencesEntity = match.TargetEntity;
+                    attribute.ReferencesAttribute = NamingRules.Policy.PrimaryKeyName;
+
+                    notes.Add($"'{entity.TechnicalName}.{attribute.TechnicalName}' mevcut yapıdaki " +
+                              $"'{match.TargetEntity}' tablosuna referans veriyor.");
                     continue;
                 }
 

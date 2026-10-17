@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DataModelGenerator.App.Dialogs;
@@ -24,6 +25,9 @@ public partial class InputViewModel : ObservableObject, IRefreshable
 
     [ObservableProperty] private string _changeSummary = string.Empty;
 
+    /// <summary>Yüklenen mevcut yapı dosyasının özeti.</summary>
+    [ObservableProperty] private string _existingStructureSummary = string.Empty;
+
     public ObservableCollection<BusinessRule> Rules { get; } = new();
 
     /// <summary>Son artımlı güncellemede modelde oluşan fark.</summary>
@@ -41,6 +45,7 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     {
         StatusMessage = string.Empty;
         HasModel = _session.Package is not null && _session.Package.Model.Entities.Count > 0;
+        ExistingStructureSummary = _session.Input.ExistingStructure.Summary;
 
         // Dışarıdan (cevap, sohbet) eklenen kurallar da listede görünmeli.
         foreach (var rule in _session.Input.Rules.Where(r => Rules.All(x => x.Id != r.Id)))
@@ -119,6 +124,52 @@ public partial class InputViewModel : ObservableObject, IRefreshable
     }
 
     private string NextRuleId() => $"BR-{Rules.Count(r => r.Origin == RuleOrigin.User) + 1:00}";
+
+    /// <summary>
+    /// Konuyla ilgili mevcut yapıyı anlatan markdown dosyasını yükler. İçerik
+    /// LLM'e bağlam olarak verilir; oradaki tablolar yeniden üretilmez.
+    /// </summary>
+    [RelayCommand]
+    private void LoadExistingStructure()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Mevcut yapı dosyası seçin",
+            Filter = "Markdown dosyası (*.md)|*.md|Metin dosyası (*.txt)|*.txt|Tüm dosyalar (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var content = File.ReadAllText(dialog.FileName);
+            var structure = ExistingStructure.Parse(Path.GetFileName(dialog.FileName), content);
+
+            _session.Input.ExistingStructure = structure;
+            if (_session.Context is not null) _session.Context.Input.ExistingStructure = structure;
+
+            ExistingStructureSummary = structure.Summary;
+            StatusMessage = structure.EntityNames.Count > 0
+                ? $"Mevcut yapı yüklendi: {string.Join(", ", structure.EntityNames.Take(8))}" +
+                  (structure.EntityNames.Count > 8 ? "…" : string.Empty)
+                : "Dosya yüklendi ama tablo adı çıkarılamadı; içerik yine de modele bağlam olarak verilecek.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Dosya okunamadı: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ClearExistingStructure()
+    {
+        _session.Input.ExistingStructure = new ExistingStructure();
+        if (_session.Context is not null) _session.Context.Input.ExistingStructure = new ExistingStructure();
+
+        ExistingStructureSummary = _session.Input.ExistingStructure.Summary;
+        StatusMessage = "Mevcut yapı dosyası kaldırıldı.";
+    }
 
     /// <summary>
     /// Mevcut modelin üzerine yeni kurallar ekler. Model sıfırdan üretilmez;

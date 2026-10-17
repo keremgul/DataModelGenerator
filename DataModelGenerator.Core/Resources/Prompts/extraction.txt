@@ -13,8 +13,13 @@ BR İLİŞKİ ANALİZİ (aynı varlığı anlatan kurallar birlikte değerlendir
 TERİM SÖZLÜĞÜ (Türkçe terim → teknik karşılık):
 {{GLOSSARY}}
 
+MEVCUT YAPI (kullanıcının yüklediği, halihazırda var olan tablolar):
+{{EXISTING_STRUCTURE}}
+
 GÖREV:
 - Yalnızca kurallardan çıkarılabilen varlıkları listele. Kurallarda geçmeyen varlık UYDURMA.
+- **MEVCUT YAPI'daki tabloları yeniden oluşturma.** Bir kural orada zaten var olan bir tabloyu anlatıyorsa onu çıktıya ekleme; yeni tabloları bu tablolarla ilişkilendir.
+- Bir varlık MEVCUT YAPI'dan geliyorsa "origin" alanına "mevcut", yeni türettiysen "yeni" yaz.
 - Aynı varlığı tanımlayan birden çok kural varsa bunları TEK varlıkta birleştir ve tüm kaynak kimliklerini yaz.
 - Her varlık için "sources" alanına, o varlığı doğuran kural kimliklerini yaz (BR-xx / Q-xx / CHAT-xx).
 - Bir varlığın gerçekten ayrı bir varlık mı yoksa başka bir varlığın alanı mı olduğundan emin değilsen "confidence": "belirsiz" yaz ve gerekçesini belirt. Belirsiz varlıklar modele eklenmez, kullanıcıya sorulur.
@@ -29,6 +34,7 @@ GÖREV:
       "description": "Bankayla ilişkisi olan gerçek veya tüzel kişi",
       "sources": ["BR-01", "BR-03"],
       "confidence": "kesin",
+      "origin": "yeni",
       "confidenceReason": "BR-01'de açıkça 'müşteri' olarak geçiyor"
     }
   ]

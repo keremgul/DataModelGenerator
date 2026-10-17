@@ -50,6 +50,11 @@ public class TraceEntry
     public string EntityTechnicalName { get; init; } = string.Empty;
     public string Attribute { get; init; } = string.Empty;
 
+    /// <summary>Tablo yüklenen mevcut yapıdan mı geliyor yoksa bu üretimde mi türedi.</summary>
+    public EntityOrigin Origin { get; init; } = EntityOrigin.New;
+
+    public string OriginText => Origin == EntityOrigin.Existing ? "mevcut" : "yeni";
+
     /// <summary>PK, FK → Hedef veya boş.</summary>
     public string KeyText { get; init; } = string.Empty;
 
@@ -166,6 +171,7 @@ public class TraceabilityTable
                 {
                     Entity = entity.TechnicalName,
                     EntityTechnicalName = entity.TechnicalName,
+                    Origin = entity.Origin,
                     Attribute = attribute.TechnicalName,
                     KeyText = attribute.IsPrimaryKey ? "PK"
                         : attribute.IsForeignKey ? $"FK → {attribute.ReferencesEntity}"

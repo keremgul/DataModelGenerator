@@ -64,6 +64,15 @@ public class EntityAttribute
     };
 }
 
+public enum EntityOrigin
+{
+    /// <summary>Business rule'lardan bu üretimde türedi.</summary>
+    New,
+
+    /// <summary>Yüklenen mevcut yapı dosyasından geldi; yeniden üretilmez.</summary>
+    Existing
+}
+
 public class ModelEntity
 {
     public string Name { get; set; } = string.Empty;
@@ -75,6 +84,14 @@ public class ModelEntity
     public Certainty Certainty { get; set; } = Certainty.Kesin;
     public double Confidence { get; set; } = 1.0;
     public string ConfidenceReason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Tablo yüklenen mevcut yapıdan mı geliyor yoksa kurallardan mı türedi.
+    /// İzlenebilirlik tablosunda ve diyagramda ayırt edilebilsin diye tutulur.
+    /// </summary>
+    public EntityOrigin Origin { get; set; } = EntityOrigin.New;
+
+    public bool IsExisting => Origin == EntityOrigin.Existing;
 
     public EntityAttribute? PrimaryKey => Attributes.FirstOrDefault(a => a.IsPrimaryKey);
     public IEnumerable<EntityAttribute> PrimaryKeys => Attributes.Where(a => a.IsPrimaryKey);

@@ -34,6 +34,15 @@ public class ProjectInput
     public List<BusinessRule> Rules { get; set; } = new();
     public List<GlossaryTerm> Glossary { get; set; } = new();
 
+    /// <summary>
+    /// Kullanıcının yüklediği mevcut yapı dosyası. Buradaki tablolar referans
+    /// alınır, yeniden üretilmez; yeni yapılar bunlarla ilişkilendirilir.
+    /// </summary>
+    public ExistingStructure ExistingStructure { get; set; } = new();
+
+    /// <summary>Mevcut yapıdaki tablo adları — yabancı anahtar doğrulamasında kullanılır.</summary>
+    public IReadOnlyList<string> ExistingStructureEntities => ExistingStructure.EntityNames;
+
     public static string PrefixOf(RuleOrigin origin) => origin switch
     {
         RuleOrigin.Clarification => "Q",

@@ -15,6 +15,15 @@
             <TextBlock Text="Adım 2 — Business Rule Listesi" Style="{StaticResource StepHeader}" Margin="0,0,0,6"/>
             <TextBlock Style="{StaticResource InfoText}"
                        Text="Kuralları tek tek ya da toplu yapıştırarak ekleyin. Kurallar yalnızca satır satır değil, aralarındaki anlam ilişkisiyle birlikte değerlendirilir; çelişen veya tekrar eden kurallar size soru olarak döner."/>
+
+            <!-- Mevcut yapı: oradaki tablolar yeniden üretilmez, referans alınır. -->
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <Button Content="Mevcut Yapı Yükle (.md)" Command="{Binding LoadExistingStructureCommand}"
+                        ToolTip="Konuyla ilgili mevcut tabloları anlatan dosya. Oradaki tablolar yeniden oluşturulmaz; yeni yapılar bunlarla ilişkilendirilir."/>
+                <Button Content="Kaldır" Command="{Binding ClearExistingStructureCommand}" MinWidth="70"/>
+                <TextBlock Text="{Binding ExistingStructureSummary}" Style="{StaticResource InfoText}"
+                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- Kural girişi -->

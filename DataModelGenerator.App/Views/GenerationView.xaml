@@ -101,6 +101,20 @@
                             </DataGrid.RowStyle>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Varlık" Binding="{Binding Entity}" Width="130"/>
+                                <!-- Mevcut yapıdan gelen tablolar yeniden üretilmez. -->
+                                <DataGridTextColumn Header="Köken" Binding="{Binding OriginText}" Width="70">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#2E7D32"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OriginText}" Value="mevcut">
+                                                    <Setter Property="Foreground" Value="#8894A8"/>
+                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                                 <DataGridTextColumn Header="Alan" Binding="{Binding Attribute}" Width="150"/>
                                 <DataGridTextColumn Header="Anahtar" Binding="{Binding KeyText}" Width="110"/>
                                 <!-- Uzun açıklama yok: kısa rozet + tooltip. -->

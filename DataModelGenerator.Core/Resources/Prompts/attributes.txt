@@ -12,6 +12,10 @@ KULLANICININ VERDİĞİ BAĞLAYICI CEVAPLAR (MUST — harfiyen uygula, yorumlama
 TERİM SÖZLÜĞÜ:
 {{GLOSSARY}}
 
+MEVCUT YAPI (halihazırda var olan tablolar — alan adlandırmasında bunlarla tutarlı ol,
+bu tablolara referans veren alanları <TABLOADI>ID kalıbıyla yaz):
+{{EXISTING_STRUCTURE}}
+
 BUSINESS RULE LİSTESİ:
 {{RULES}}
 

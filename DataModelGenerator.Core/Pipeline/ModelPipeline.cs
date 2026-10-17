@@ -870,6 +870,7 @@ public class ModelPipeline
     {
         var prompt = _prompts.Render("extraction", new Dictionary<string, string>
         {
+            ["EXISTING_STRUCTURE"] = context.Input.ExistingStructure.ToPromptContext(),
             ["GLOSSARY"] = FormatGlossary(context.Input),
             ["RULES"] = FormatRules(context.Input),
             ["RULE_RELATIONS"] = FormatRuleRelations(context)
@@ -944,6 +945,7 @@ public class ModelPipeline
         var prompt = _prompts.Render("attributes", new Dictionary<string, string>
         {
             ["MUST_CONSTRAINTS"] = FormatMustConstraints(context),
+            ["EXISTING_STRUCTURE"] = context.Input.ExistingStructure.ToPromptContext(),
             ["GLOSSARY"] = FormatGlossary(context.Input),
             ["RULES"] = FormatRules(context.Input),
             ["ENTITIES"] = FormatEntities(context.Model),
@@ -984,6 +986,22 @@ public class ModelPipeline
         ApplyDeterministicLayer(context);
     }
 
+    /// <summary>
+    /// Adı yüklenen mevcut yapıda geçen tablolar "mevcut" olarak işaretlenir.
+    /// Modelin beyanına bırakılmaz: eşleşme kod tarafında yapılır.
+    /// </summary>
+    private static void MarkExistingEntities(PipelineContext context)
+    {
+        var existing = context.Input.ExistingStructureEntities;
+        if (existing.Count == 0) return;
+
+        foreach (var entity in context.Model.Entities)
+        {
+            if (existing.Contains(entity.TechnicalName, StringComparer.OrdinalIgnoreCase))
+                entity.Origin = EntityOrigin.Existing;
+        }
+    }
+
     /// <summary>Adlandırma, tip eşlemesi, anahtar tamamlama ve doğrulama — hepsi kod tarafında.</summary>
     /// <param name="scope">Yalnızca bu varlıklar normalize edilir; null ise tüm model.</param>
     private void ApplyDeterministicLayer(PipelineContext context, IEnumerable<string>? scope = null)
@@ -1011,9 +1029,12 @@ public class ModelPipeline
 
         // <TABLOADI>ID kalıbı ilişkinin kendisidir; eksik ilişki kurulur,
         // mükerrer tanım elenir, hedefi bulunamayan referans uyarıya döner.
-        // Mevcut yapı dosyasındaki tablolar bu listeye madde 4'te bağlanacak.
-        foreach (var note in RelationshipRules.Apply(context.Model, context.PendingItems))
+        // Yüklenen mevcut yapıdaki tablolar da geçerli referans hedefi sayılır.
+        foreach (var note in RelationshipRules.Apply(context.Model, context.PendingItems,
+                     context.Input.ExistingStructureEntities))
             context.NormalizationNotes.Add(note);
+
+        MarkExistingEntities(context);
 
         // Normalizasyon kuralları sırayla işletilir; geçemeyen alan modelde kalmaz.
         context.PendingItems.RemoveAll(p => p.Reason == PendingReason.NormalizationBlocked);
@@ -1441,6 +1462,9 @@ public class ModelPipeline
             TechnicalName = NamingRules.ToTechnicalName(name),
             Description = node.Str("description"),
             SourceRuleIds = ruleIds,
+            Origin = node.Str("origin").Trim().Equals("mevcut", StringComparison.OrdinalIgnoreCase)
+                ? EntityOrigin.Existing
+                : EntityOrigin.New,
             Certainty = ReadCertainty(node),
             ConfidenceReason = node.Str("confidenceReason")
         };
