@@ -13,9 +13,19 @@ UYGULAMANIN ZATEN TESPİT ETTİĞİ BELİRSİZLİKLER (tekrarlama):
 
 GÖREV:
 - Kurallardan net biçimde çıkarılamayan her karar noktasını belirsizlik olarak yaz.
+- **Odağın MANTIKSAL YAPI olsun.** Öncelik sırasıyla şunları ara:
+  1. Varlıklar arası ilişkiler: iki tablo gerçekten ilişkili mi, hangi yönde?
+  2. Kardinalite: 1-1, 1-N, N-N hangisi?
+  3. Zorunluluk: ilişki ve alan zorunlu mu, opsiyonel mi?
+  4. İş kuralı kaynaklı kısıtlar: tekillik, durum geçişi, koşullu zorunluluk.
+  5. Tarihçe/versiyonlama: bu bilginin geçmişi tutulacak mı, yoksa güncel hâli mi yeterli?
+  6. Varlığın var olup olmaması: ayrı bir tablo mu, başka tablonun alanı mı?
 - "kind" için şunlardan birini kullan: Cardinality, PrimaryKey, ForeignKey, EntityExistence, Requiredness, Naming, Other.
-- "impact" değeri: kardinalite, birincil/yabancı anahtar ve varlığın var olup olmaması YÜKSEK (High); adlandırma stili gibi konular DÜŞÜK (Low).
-- Veri tipi veya alan uzunluğu ile ilgili belirsizlik YAZMA; bu model tip bilgisi tutmaz.
+- **Alan tipi ve uzunluğu hakkında belirsizlik YAZMA.** Bu model tip bilgisi tutmaz.
+  Tipe benzeyen bir soruyu yalnızca İŞ MANTIĞINI etkiliyorsa sor — örneğin "tutar
+  negatif olabilir mi", "tarih ileri tarihli olabilir mi" gibi kısıt soruları
+  Requiredness veya Other olarak yazılabilir; "VARCHAR kaç karakter olmalı" yazma.
+- "impact" değeri: ilişki, kardinalite, zorunluluk, tarihçe ve varlığın var olup olmaması YÜKSEK (High); adlandırma stili gibi konular DÜŞÜK (Low).
 - "confidence" mevcut kararın ne kadar güvenilir olduğudur (0-1); düşük confidence = yüksek belirsizlik.
 - Emin olduğun, kurallarda açıkça yazan noktaları listeleme.
 

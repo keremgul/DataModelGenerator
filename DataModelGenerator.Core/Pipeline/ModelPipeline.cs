@@ -1123,15 +1123,27 @@ public class ModelPipeline
             return;
         }
 
+        var droppedTypeQuestions = 0;
+
         foreach (var node in response.Array("ambiguities"))
         {
             var description = node.Str("description");
             if (string.IsNullOrWhiteSpace(description)) continue;
 
+            var kind = ParseKind(node.Str("kind"));
+
+            // Model tip bilgisi tutmuyor: tip belirsizliği prompt'ta yasaklandı
+            // ama yine gelirse burada elenir — soruların odağı mantıksal yapı.
+            if (kind == AmbiguityKind.DataType || IsTypeQuestion(description))
+            {
+                droppedTypeQuestions++;
+                continue;
+            }
+
             AddAmbiguity(context, new Ambiguity
             {
                 Target = node.Str("target"),
-                Kind = ParseKind(node.Str("kind")),
+                Kind = kind,
                 Impact = node.Str("impact").Equals("High", StringComparison.OrdinalIgnoreCase)
                     ? AmbiguityImpact.High
                     : AmbiguityImpact.Low,
@@ -1139,6 +1151,28 @@ public class ModelPipeline
                 Confidence = node.Num("confidence")
             });
         }
+
+        if (droppedTypeQuestions > 0)
+            context.NormalizationNotes.Add(
+                $"{droppedTypeQuestions} alan tipi belirsizliği elendi; model tip bilgisi tutmuyor.");
+    }
+
+    /// <summary>
+    /// Tip/uzunluk sorusu mu? İş mantığını etkileyen kısıt soruları (negatif
+    /// olabilir mi, ileri tarihli olabilir mi) tip sorusu sayılmaz.
+    /// </summary>
+    private static bool IsTypeQuestion(string description)
+    {
+        var folded = NamingRules.FoldTurkish(description).ToLowerInvariant();
+
+        string[] typeHints =
+        [
+            "varchar", "nvarchar", "char(", "decimal", "numeric", "bigint", "smallint",
+            "veri tipi", "alan tipi", "veri turu", "alan turu", "kac karakter",
+            "karakter uzunlugu", "alan uzunlugu", "kac hane", "ondalik basamak"
+        ];
+
+        return typeHints.Any(hint => folded.Contains(hint));
     }
 
     /// <summary>Düşük confidence'lı varlık/ilişkiler de belirsizlik listesine girer.</summary>
@@ -1250,8 +1284,12 @@ public class ModelPipeline
     }
 
     /// <summary>Noktalama ve büyük/küçük harf farkları tekrarı gizlemesin.</summary>
+    /// <summary>
+    /// Birebir karşılaştırma yetmez: model aynı soruyu farklı kelimelerle
+    /// sorabilir. Anlamlı kelime örtüşmesine bakılır.
+    /// </summary>
     private static bool IsSameQuestion(string first, string second) =>
-        string.Equals(Normalize(first), Normalize(second), StringComparison.OrdinalIgnoreCase);
+        QuestionSimilarity.AreSame(first, second);
 
     private static string Normalize(string value) =>
         new(NamingRules.FoldTurkish(value).Where(char.IsLetterOrDigit).ToArray());
