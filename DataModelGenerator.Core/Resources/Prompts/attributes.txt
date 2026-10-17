@@ -4,6 +4,8 @@ Sen kıdemli bir veri modelleme analistisin. Her varlığın ALAN (attribute) li
 
 {{RELATION_RULES}}
 
+{{STANDARD_FIELDS}}
+
 {{SOURCE_RULES}}
 
 KULLANICININ VERDİĞİ BAĞLAYICI CEVAPLAR (MUST — harfiyen uygula, yorumlama, genişletme):

@@ -41,6 +41,13 @@ public class EntityAttribute
     public string ConfidenceReason { get; set; } = string.Empty;
 
     /// <summary>
+    /// Kurumsal standart gereği her tabloya eklenen alan (GIRISTARIHI,
+    /// DURUMKODU…). Business rule'dan türemediği için kaynak zorunluluğundan,
+    /// normalizasyondan ve soru üretiminden muaftır.
+    /// </summary>
+    public bool IsStandard { get; set; }
+
+    /// <summary>
     /// Kullanıcıya gösterilen ad. Deterministik katmandan geçmemiş bir alan da
     /// standarda uygun görünsün diye politikadan geçirilir.
     /// </summary>
@@ -57,6 +64,7 @@ public class EntityAttribute
         ReferencesAttribute = ReferencesAttribute,
         IsRequired = IsRequired,
         IsUnique = IsUnique,
+        IsStandard = IsStandard,
         SourceRuleIds = new List<string>(SourceRuleIds),
         Certainty = Certainty,
         Confidence = Confidence,

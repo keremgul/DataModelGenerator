@@ -57,6 +57,7 @@ public class SkillLibrary
         // bu yüzden önce o gömülür, sonra adlandırma kuralları genişletilir.
         sb.Replace("{{RELATION_RULES}}", RelationRules);
         sb.Replace("{{NAMING_RULES}}", Rules.NamingRules.Policy.Describe());
+        sb.Replace("{{STANDARD_FIELDS}}", Rules.StandardFields.PromptText);
         return sb.ToString();
     }
 

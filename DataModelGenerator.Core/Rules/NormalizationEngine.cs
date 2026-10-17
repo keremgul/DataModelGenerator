@@ -153,8 +153,8 @@ public class NormalizationEngine
         if (keys.Count < 2) return;
 
         var dependents = entity.Attributes
-            .Where(a => !a.IsPrimaryKey && !a.IsForeignKey)
-            .Select(a => a.Name)
+            .Where(a => !a.IsPrimaryKey && !a.IsForeignKey && !IsStandardField(a))
+            .Select(a => a.TechnicalName)
             .ToList();
 
         if (dependents.Count == 0) return;
@@ -196,7 +196,9 @@ public class NormalizationEngine
     private static void CheckTransitiveDependencies(ModelEntity entity, List<NormalizationResult> results,
         List<PendingItem> pending)
     {
-        var candidates = entity.Attributes.Where(a => !a.IsPrimaryKey && !a.IsForeignKey).ToList();
+        var candidates = entity.Attributes
+            .Where(a => !a.IsPrimaryKey && !a.IsForeignKey && !IsStandardField(a))
+            .ToList();
 
         foreach (var dependent in candidates.ToList())
         {
@@ -377,9 +379,22 @@ public class NormalizationEngine
         }
     }
 
+    private static bool IsStandardField(EntityAttribute attribute) =>
+        attribute.IsStandard || StandardFields.IsStandard(attribute.TechnicalName);
+
     private static NormalizationResult CheckAttribute(ModelEntity entity, EntityAttribute attribute)
     {
         var result = new NormalizationResult { Entity = entity.TechnicalName, Attribute = attribute.TechnicalName };
+
+        // Standart alanlar kurumsal standarttan gelir: anlamları, zorunlulukları
+        // ve atomiklikleri tanımlıdır. Kurallara sokulmaz.
+        if (attribute.IsStandard || StandardFields.IsStandard(attribute.TechnicalName))
+        {
+            result.AppliedRules.Add("STD-1");
+            result.Explanation = "Kurumsal standart alan; normalizasyon kurallarından muaf.";
+            return result;
+        }
+
         var folded = NamingRules.FoldTurkish(attribute.Name).ToLowerInvariant();
 
         // AD-1: anahtar alanlar model kuralından doğar; diğerlerinin kaynağı olmalı.

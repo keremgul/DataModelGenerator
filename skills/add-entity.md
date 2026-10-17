@@ -9,6 +9,8 @@ Modele yeni bir tablo ekler. Yalnızca istenen tablo eklenir; "bunun yanında
 
 {{RELATION_RULES}}
 
+{{STANDARD_FIELDS}}
+
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
 

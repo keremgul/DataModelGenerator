@@ -1036,6 +1036,10 @@ public class ModelPipeline
 
         MarkExistingEntities(context);
 
+        // Kurumsal standart alanlar modelin üretmesine bırakılmaz, kod ekler.
+        foreach (var note in StandardFields.Apply(context.Model))
+            context.NormalizationNotes.Add(note);
+
         // Normalizasyon kuralları sırayla işletilir; geçemeyen alan modelde kalmaz.
         context.PendingItems.RemoveAll(p => p.Reason == PendingReason.NormalizationBlocked);
         context.NormalizationResults.Clear();
@@ -1124,6 +1128,7 @@ public class ModelPipeline
         }
 
         var droppedTypeQuestions = 0;
+        var droppedStandardFieldQuestions = 0;
 
         foreach (var node in response.Array("ambiguities"))
         {
@@ -1137,6 +1142,13 @@ public class ModelPipeline
             if (kind == AmbiguityKind.DataType || IsTypeQuestion(description))
             {
                 droppedTypeQuestions++;
+                continue;
+            }
+
+            // Standart alanlar kurumsal standartla belirlidir; sorulacak bir şey yok.
+            if (MentionsStandardField(node.Str("target")) || MentionsStandardField(description))
+            {
+                droppedStandardFieldQuestions++;
                 continue;
             }
 
@@ -1155,6 +1167,23 @@ public class ModelPipeline
         if (droppedTypeQuestions > 0)
             context.NormalizationNotes.Add(
                 $"{droppedTypeQuestions} alan tipi belirsizliği elendi; model tip bilgisi tutmuyor.");
+
+        if (droppedStandardFieldQuestions > 0)
+            context.NormalizationNotes.Add(
+                $"{droppedStandardFieldQuestions} standart alan belirsizliği elendi; " +
+                "bu alanlar kurumsal standartla belirlidir.");
+    }
+
+    /// <summary>
+    /// Metin standart alanlardan birine mi işaret ediyor? Bu alanlar için soru
+    /// üretilmez — anlamları ve zorunlulukları standartla tanımlıdır.
+    /// </summary>
+    private static bool MentionsStandardField(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        var folded = NamingRules.FoldTurkish(text).ToUpperInvariant();
+        return StandardFields.All.Any(f => folded.Contains(f.Name, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -1262,6 +1291,9 @@ public class ModelPipeline
             // Aynı belirsizlik veya aynı soru ikinci kez sorulmaz.
             if (context.Questions.Any(q => q.AmbiguityId == ambiguity.Id)) continue;
             if (context.Questions.Any(q => IsSameQuestion(q.Text, text))) continue;
+
+            // Standart alanlar için soru üretilmez.
+            if (MentionsStandardField(text) || MentionsStandardField(ambiguity.Target)) continue;
 
             context.Questions.Add(new ClarifyingQuestion
             {
@@ -1404,17 +1436,8 @@ public class ModelPipeline
 
     private static void AddDeterministicSuggestions(PipelineContext context)
     {
-        var hasAuditFields = context.Model.Entities.All(e =>
-            e.Attributes.Any(a => NamingRules.FoldTurkish(a.Name)
-                .Contains("Olusturma", StringComparison.OrdinalIgnoreCase)));
-
-        if (!hasAuditFields)
-        {
-            AddSuggestion(context,
-                "Audit alanları (OlusturmaTarihi, GuncellemeTarihi, OlusturanKullanici) kurallarda geçmediği için " +
-                "modele eklenmedi; standart pratik gereği eklenmesi önerilir.");
-        }
-
+        // Audit alanları artık kurumsal standart olarak her tabloya ekleniyor;
+        // ayrıca önerilmesine gerek kalmadı.
         foreach (var orphan in ModelRules.FindUnrelatedEntities(context.Model))
         {
             AddSuggestion(context,

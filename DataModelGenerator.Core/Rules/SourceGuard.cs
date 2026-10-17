@@ -67,8 +67,10 @@ public static class SourceGuard
             var target = $"{entity.Label}.{attribute.Label}";
             var sources = ValidSources(attribute.SourceRuleIds, known);
 
-            // Anahtar alanları model kuralından doğar; kaynak aranmaz.
-            if (attribute.IsPrimaryKey || attribute.IsForeignKey)
+            // Anahtar alanları model kuralından, standart alanlar kurumsal
+            // standarttan doğar; ikisinde de business rule kaynağı aranmaz.
+            if (attribute.IsPrimaryKey || attribute.IsForeignKey ||
+                attribute.IsStandard || StandardFields.IsStandard(attribute.TechnicalName))
             {
                 accepted.Add(attribute);
                 continue;

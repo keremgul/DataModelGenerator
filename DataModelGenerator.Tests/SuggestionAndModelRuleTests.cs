@@ -97,7 +97,19 @@ public class SuggestionAndModelRuleTests
     [Fact]
     public async Task Oneriler_ReddedilenTekrarOnerilmez()
     {
-        var (pipeline, _) = Build();
+        var (pipeline, provider) = Build();
+
+        // Biri reddedilip diğeri kabul edilebilsin diye iki ayrı öneri gerekiyor.
+        provider.SummaryResponseOverride = """
+            {
+              "summary": "Özet.",
+              "suggestions": [
+                "Sipariş durumu için ayrı bir durum tablosu düşünülebilir",
+                "Müşteri iletişim bilgileri ayrı tabloya alınabilir"
+              ]
+            }
+            """;
+
         var context = new PipelineContext { Input = SampleInput() };
         var package = await pipeline.GenerateAsync(context);
 

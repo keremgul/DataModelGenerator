@@ -9,6 +9,8 @@ kendiliğinden başka alan, başka tablo veya ilişki eklenmez.
 
 {{RELATION_RULES}}
 
+{{STANDARD_FIELDS}}
+
 ## Çıktı şeması
 Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yazma.
 Yalnızca **eklenen alanı** döndürmen yeterlidir: alanlar modele eklenerek

@@ -162,7 +162,29 @@ Invoke-Named "Gönder"
 Start-Sleep -Seconds 5
 Save-Shot "flow-8c-alan-kaldirildi"
 
-# --- 6. Adim gostergesi -----------------------------------------------------
+# --- 6. Artimli gelistirme: Girdi'ye don, yeni kural ekle -------------------
+Click-Step 1
+Start-Sleep -Milliseconds 800
+
+$cond = New-Object System.Windows.Automation.PropertyCondition(
+    $AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
+$edits = (Get-Window).FindAll($TS::Descendants, $cond)
+Set-Text $edits[0] "Her siparis icin fatura kesilir."
+Invoke-Named "Ekle"
+Save-Shot "flow-10-yeni-kural"
+
+$extend = $null
+foreach ($b in Find-All-Buttons) { if ($b.Current.Name -like "*Modeli Guncelle*" -or $b.Current.Name -like "*Modeli Güncelle*") { $extend = $b; break } }
+if ($null -eq $extend) {
+    Write-Host "5) HATA: 'Kurallari Ekle ve Modeli Guncelle' butonu bulunamadi"
+} else {
+    $extend.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    Start-Sleep -Seconds 8
+    Save-Shot "flow-11-artimli"
+    Write-Host "5) artimli guncelleme calisti"
+}
+
+# --- 7. Adim gostergesi -----------------------------------------------------
 Click-Step 5
 Start-Sleep -Milliseconds 800
 Save-Shot "flow-9-disa-aktar"

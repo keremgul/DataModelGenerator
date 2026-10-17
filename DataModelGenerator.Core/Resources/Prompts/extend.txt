@@ -4,6 +4,8 @@ Sen kıdemli bir veri modelleme analistisin. ELİNDE ÇALIŞAN BİR MODEL VAR. B
 
 {{RELATION_RULES}}
 
+{{STANDARD_FIELDS}}
+
 {{SOURCE_RULES}}
 
 MEVCUT MODEL (bu modelin üzerine çalışıyorsun):
