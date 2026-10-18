@@ -92,12 +92,56 @@ public static class DirectiveExecutor
 
         entity.Attributes.Remove(attribute);
 
+        // Yabancı anahtar bir ilişkiyi taşır. Alan kalkıp ilişki kalırsa
+        // deterministik katman (SyncForeignKeys) alanı geri yazar ve kullanıcı
+        // "kaldırıldı" cevabı aldığı hâlde modelde hiçbir şey değişmez.
+        var removedRelationships = RemoveCarriedRelationships(model, entity, attribute);
+
+        var affected = new List<string> { entity.TechnicalName };
+        if (removedRelationships.Count > 0 && !string.IsNullOrWhiteSpace(attribute.ReferencesEntity))
+            affected.Add(attribute.ReferencesEntity!);
+
+        var message = $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı kaldırıldı.";
+        if (removedRelationships.Count > 0)
+            message += $" Alanın taşıdığı ilişki de kaldırıldı: {string.Join(", ", removedRelationships)}.";
+
         return new DirectiveResult
         {
             Applied = true,
-            Message = $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı kaldırıldı.",
-            AffectedEntities = [entity.TechnicalName]
+            Message = message,
+            AffectedEntities = affected
         };
+    }
+
+    /// <summary>
+    /// Kaldırılan yabancı anahtarın taşıdığı ilişkiyi siler. Aynı tabloya
+    /// işaret eden başka bir yabancı anahtar kaldıysa (rol ayrımlı ilişkiler)
+    /// ilişki korunur.
+    /// </summary>
+    private static List<string> RemoveCarriedRelationships(DataModel model, ModelEntity child,
+        EntityAttribute foreignKey)
+    {
+        var parent = foreignKey.ReferencesEntity;
+        if (!foreignKey.IsForeignKey || string.IsNullOrWhiteSpace(parent)) return [];
+
+        var stillReferenced = child.Attributes.Any(a =>
+            a.IsForeignKey && string.Equals(a.ReferencesEntity, parent, StringComparison.OrdinalIgnoreCase));
+
+        if (stillReferenced) return [];
+
+        var carried = model.Relationships
+            .Where(r => (Same(model, r.FromEntity, parent!) && Same(model, r.ToEntity, child.TechnicalName)) ||
+                        (Same(model, r.FromEntity, child.TechnicalName) && Same(model, r.ToEntity, parent!)))
+            .ToList();
+
+        var removed = new List<string>();
+        foreach (var relationship in carried)
+        {
+            model.Relationships.Remove(relationship);
+            removed.Add($"{relationship.FromEntity} → {relationship.ToEntity}");
+        }
+
+        return removed;
     }
 
     private static DirectiveResult RenameEntity(DataModel model, ChatDirective directive, string ruleId)

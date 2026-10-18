@@ -19,6 +19,15 @@ kuralları belgeler.
 ## remove-field — alanı kaldır
 - Birincil anahtar kaldırılamaz; her tabloda `ID` bulunmak zorundadır.
 - Alan bulunamazsa işlem uygulanmaz.
+- **Kaldırılan alan bir yabancı anahtarsa, taşıdığı ilişki de kaldırılır.**
+  Aksi halde deterministik katman (`SyncForeignKeys`) ilişkiden yola çıkıp alanı
+  geri yazar; kullanıcı "kaldırıldı" cevabı aldığı hâlde modelde hiçbir şey
+  değişmemiş olur. Örnek: `PROJE` ile `CALISAN` arasındaki bağ `PROJECALISAN`
+  ara tablosuyla kurulmuşken `PROJE.CALISANID` kaldırıldığında
+  `CALISAN → PROJE` ilişkisi de kalkar; ara tablo ve onun yabancı anahtarları
+  yerinde kalır.
+- Aynı tabloya işaret eden başka bir yabancı anahtar kaldıysa (rol ayrımlı
+  ilişkiler, ör. `YONETICICALISANID`) ilişki korunur — o alan hâlâ taşıyor.
 
 ## rename-entity — tablo adını değiştir
 - Hedef ad başka bir tabloda kullanılıyorsa işlem uygulanmaz.
