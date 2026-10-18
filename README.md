@@ -50,9 +50,20 @@ Komut `publish/DataModelGenerator-vX.Y.Z-win-x64/` klasörünü ve aynı adlı z
 
 1. **Bağlantı** — Sağlayıcı seçin (OpenAI, Anthropic, Google Gemini, Azure OpenAI, Ollama, özel endpoint), hazır listeden model seçin veya adını yazın, API anahtarını girin ve "Bağlantıyı Test Et" ile doğrulayın. Test başarılı olunca profil kaydedilebilir.
 2. **Girdi** — Numaralı business rule listesi (tek tek ya da serbest metin yapıştırıp ayrıştırarak). Kurallar satır satır değil, aralarındaki anlam ilişkisiyle birlikte değerlendirilir; çelişen veya tekrar eden kurallar size soru olarak döner. İsterseniz konuyla ilgili **mevcut yapıyı anlatan bir `.md` dosyası** yükleyin: oradaki tablolar yeniden üretilmez, yeni yapılar bunlarla ilişkilendirilir.
-3. **Üretim** — Sekiz adımlı zincir çalışır (bkz. [docs/pipeline.md](docs/pipeline.md)). Sonuçlar dört sekmede görünür: **ER diyagramı**, **özet** (izlenebilirlik tablosu), **beklemede**, **öneriler**. Doğrulama bulgusu varsa başlığın altında uyarı şeridi belirir; ayrıntı üzerine gelince görünür. ER diyagramı yalnızca yapıyı gösterir — kaynak izleri özet tablosundadır.
+3. **Üretim** — Sekiz adımlı zincir çalışır (bkz. [docs/pipeline.md](docs/pipeline.md)). Sonuçlar dört sekmede görünür: **ER diyagramı**, **özet** (izlenebilirlik tablosu), **beklemede**, **öneriler**. Doğrulama bulgusu varsa başlığın altında uyarı şeridi belirir; ayrıntı üzerine gelince görünür. ER diyagramı yapıyı ve **her alanın yalın Türkçe açıklamasını** gösterir — kaynak izleri özet tablosundadır.
 4. **Sorular** — Belirsizlikler ve beklemede listesi için üretilen soruları cevaplayın. Sorular **mantıksal yapıya** odaklanır: ilişkiler, kardinalite, zorunluluk, iş kuralı kısıtları, tarihçe ihtiyacı. Önerilen cevaplar kopyalanabilir ve tek tıkla kullanılabilir; model yalnızca etkilenen adımdan itibaren kısmen güncellenir. Cevabınız bağlayıcı kısıttır ve modelde karşılık bulup bulmadığı denetlenir.
-5. **Sohbet** — Modelde ne değişsin, yazın. Talep yapılandırılmış direktiflere çevrilir; yeniden adlandırma ve kaldırma gibi işlemler LLM'e hiç gitmeden doğrudan uygulanır. Sonuç modelin "yaptım" demesiyle değil, **önceki ve sonraki hali arasındaki gerçek diff** ile doğrulanır.
+5. **Sohbet** — Modelde ne değişsin, yazın; ya da model hakkında soru sorun. Talep yapılandırılmış direktiflere çevrilir; yeniden adlandırma, kaldırma, kardinalite, zorunluluk ve açıklama değişiklikleri LLM'e hiç gitmeden doğrudan uygulanır. Hiçbir işleme tam uymayan talep "anlaşılmadı" denip bırakılmaz, modelin tamamı üzerinden uygulanır. Model ne yapılacağını açıklayıp JSON'da uygulamazsa talep, açıklamalarıyla birlikte **bir kez daha** istenir. Soru sorduğunuzda model değiştirilmeden yanıt verilir. Sonuç modelin "yaptım" demesiyle değil, **önceki ve sonraki hali arasındaki gerçek diff** ile doğrulanır; zorunluluk, tekillik, açıklama ve kardinalite gibi yerinde değişiklikler de bu diff'e girer.
+
+### Model korunur: cevap, öneri ve sohbet eklemedir
+
+Soru cevabı, kabul edilen öneri ve sohbet mesajı mevcut modelin **üzerine eklenir**; modeli baştan değiştiremez:
+
+- Cevaptan sonra yeniden çalışan varlık, ilişki ve alan adımları yanıtı mevcut modelle birleştirir. Yanıtta dönmeyen tablo, ilişki veya alan silinmez.
+- Modelin yanıtındaki silme listeleri (`removedEntities`, `removedFields`, `removedRelationships`) ancak sizin talebiniz o öğeyi **açıkça** kaldırmayı istiyorsa ("sil", "kaldır", "gereksiz", "yerine"… ve öğenin adı) uygulanır. İstenmeyen silmeler reddedilir ve "korunan öğeler" notu olarak gösterilir. Bu denetim prompt'a değil koddaki `RemovalGuard` süzgecine dayanır.
+
+### Alan açıklamaları
+
+Her alanın ne tuttuğunu anlatan kısa, teknik terim içermeyen bir açıklaması vardır ve ER diyagramında alanın yanında görünür. Birincil anahtar, yabancı anahtar ve standart alanların açıklaması kod tarafında yazılır; diğerleri üretim sırasında modelden istenir, boş kalanlar için ayrı bir açıklama turu (`skills/describe-fields.md`) çalışır. Sohbetten değiştirebilirsiniz: *"Sipariş tablosundaki Tutar alanının açıklaması 'Siparişin toplam ödenecek tutarı' olsun"*. Yazdığınız açıklamanın üzerine sonradan yazılmaz.
 6. **Dışa aktarma** — Mermaid kodu (.mmd), model JSON'u ve örnek veri simülasyonu (her varlık ayrı sekme olacak şekilde .xlsx).
 
 Üstteki adım göstergesi hangi adımın tamamlandığını (✓) ve geri dönüp bir şey değiştirdiğinizde hangi adımın **güncel olmadığını** (!) gösterir. Sonraki adımların çıktısı silinmez, yalnızca işaretlenir.

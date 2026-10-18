@@ -33,6 +33,20 @@ public class EntityAttribute
     public string? ReferencesAttribute { get; set; }
     public bool IsRequired { get; set; }
     public bool IsUnique { get; set; }
+
+    /// <summary>
+    /// Alanın ne tuttuğunu iş diliyle anlatan kısa açıklama. ER diyagramında
+    /// alanın yanında gösterilir; teknik terim yerine yalın Türkçe kullanılır.
+    /// </summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Açıklama kullanıcı tarafından sohbetten yazıldı; model yanıtları ve
+    /// otomatik açıklama turu bunun üzerine yazmaz.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DescriptionByUser { get; set; }
+
     /// <summary>Bu alanı doğuran kaynaklar: BR-xx, Q-xx veya CHAT-xx. Boş olamaz.</summary>
     public List<string> SourceRuleIds { get; set; } = new();
 
@@ -64,6 +78,8 @@ public class EntityAttribute
         ReferencesAttribute = ReferencesAttribute,
         IsRequired = IsRequired,
         IsUnique = IsUnique,
+        Description = Description,
+        DescriptionByUser = DescriptionByUser,
         IsStandard = IsStandard,
         SourceRuleIds = new List<string>(SourceRuleIds),
         Certainty = Certainty,
@@ -144,8 +160,26 @@ public class DataModel
     public List<ModelEntity> Entities { get; set; } = new();
     public List<Relationship> Relationships { get; set; } = new();
 
-    public ModelEntity? FindEntity(string name) =>
-        Entities.FirstOrDefault(e =>
-            e.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-            e.TechnicalName.Equals(name, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Tablo görünen adıyla, teknik adıyla veya teknik ada çevrilebilen doğal
+    /// adıyla ("Müşteri" → MUSTERI) bulunur. LLM ve kullanıcı tabloya çoğu
+    /// zaman doğal adıyla atıfta bulunur; birebir karşılaştırma bunu kaçırıyordu.
+    /// </summary>
+    public ModelEntity? FindEntity(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+
+        var trimmed = name.Trim();
+        var direct = Entities.FirstOrDefault(e =>
+            e.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase) ||
+            e.TechnicalName.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        if (direct is not null) return direct;
+
+        var technical = Rules.NamingRules.ToTechnicalName(trimmed);
+        if (string.IsNullOrWhiteSpace(technical)) return null;
+
+        return Entities.FirstOrDefault(e =>
+            e.TechnicalName.Equals(technical, StringComparison.OrdinalIgnoreCase) ||
+            Rules.NamingRules.ToTechnicalName(e.Name).Equals(technical, StringComparison.OrdinalIgnoreCase));
+    }
 }

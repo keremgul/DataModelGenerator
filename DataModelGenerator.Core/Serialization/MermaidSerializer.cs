@@ -59,13 +59,22 @@ public static class MermaidSerializer
     }
 
     /// <summary>
-    /// Diyagramda yalnızca yapısal bilgi gösterilir. Kaynak kimlikleri (BR-01,
-    /// Q-03…) buraya yazılmaz; izlenebilirlik için Özet sekmesindeki tablo var.
+    /// Diyagramda yapısal bilgi ve alanın yalın açıklaması gösterilir. Kaynak
+    /// kimlikleri (BR-01, Q-03…) buraya yazılmaz; izlenebilirlik için Özet
+    /// sekmesindeki tablo var.
     /// </summary>
-    private static string BuildComment(EntityAttribute attribute) =>
-        attribute.IsForeignKey && !string.IsNullOrWhiteSpace(attribute.ReferencesEntity)
-            ? $" \"{EscapeLabel($"→{attribute.ReferencesEntity}")}\""
-            : string.Empty;
+    private static string BuildComment(EntityAttribute attribute)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(attribute.Description))
+            parts.Add(attribute.Description.Trim());
+
+        if (attribute.IsForeignKey && !string.IsNullOrWhiteSpace(attribute.ReferencesEntity))
+            parts.Add($"→{attribute.ReferencesEntity}");
+
+        return parts.Count == 0 ? string.Empty : $" \"{EscapeLabel(string.Join(" · ", parts))}\"";
+    }
 
     private static string Sanitize(string name)
     {

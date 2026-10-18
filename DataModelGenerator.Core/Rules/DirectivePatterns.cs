@@ -26,6 +26,10 @@ public static partial class DirectivePatterns
         RegexOptions.IgnoreCase)]
     private static partial Regex RemoveEntityPattern();
 
+    [GeneratedRegex(@"^\s*(?<entity>[\wçğıöşüÇĞİÖŞÜ\s]+?)\s+tablosundaki\s+(?<field>[\wçğıöşüÇĞİÖŞÜ]+)\s+alan[ıi]n[ıi]n\s+a[çc][ıi]klamas[ıi](n[ıi])?\s*[:=]?\s*[""'“]?(?<text>.+?)[""'”]?\s*(olsun|yap|olarak\s+(de[ğg]i[şs]tir|g[üu]ncelle|yaz))?\s*\.?\s*$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex SetDescriptionPattern();
+
     /// <summary>Eşleşme varsa direktifi döndürür; yoksa null.</summary>
     public static ChatDirective? TryMatch(string message, DataModel model)
     {
@@ -65,6 +69,19 @@ public static partial class DirectivePatterns
                 Entity = target,
                 NewName = renameEntityMatch.Groups["new"].Value.Trim(),
                 Explanation = "Kalıp eşleşmesi: tablo adı değiştirme"
+            };
+        }
+
+        var describe = SetDescriptionPattern().Match(text);
+        if (describe.Success && Resolve(model, describe.Groups["entity"].Value) is { } describeEntity)
+        {
+            return new ChatDirective
+            {
+                Operation = DirectiveOperation.SetDescription,
+                Entity = describeEntity,
+                Field = describe.Groups["field"].Value.Trim(),
+                Description = describe.Groups["text"].Value.Trim(),
+                Explanation = "Kalıp eşleşmesi: alan açıklaması"
             };
         }
 

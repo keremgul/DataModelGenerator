@@ -65,6 +65,7 @@ public static class StandardFields
                     TechnicalName = technical,
                     IsStandard = true,
                     IsRequired = false,
+                    Description = definition.Description,
                     SourceRuleIds = { SourceId },
                     ConfidenceReason = $"Kurumsal standart alan: {definition.Description}"
                 });

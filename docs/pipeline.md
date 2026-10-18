@@ -168,7 +168,8 @@ flowchart TD
     R2 --> DIR
 
     DIR --> Q{"Direktif deterministik mi?"}:::guard
-    Q -- "evet<br/>rename · remove · kardinalite" --> EX["DirectiveExecutor<br/>doğrudan model üzerinde"]:::code
+    Q -- "evet<br/>rename · remove · kardinalite<br/>açıklama · zorunluluk" --> EX["DirectiveExecutor<br/>doğrudan model üzerinde"]:::code
+    Q -- "soru" --> ANS["Model değişmez<br/>skills/chat.md soruyu yanıtlar"]:::llm
     Q -- "hayır<br/>add-field · add-entity<br/>add-relation · split-entity" --> SK["İşleme ait skill<br/>yalnızca ilgili varlıkların context'i"]:::llm
     Q -- "skill yok / genel talep" --> RP["reprompt.txt"]:::llm
 
@@ -176,8 +177,10 @@ flowchart TD
     SK --> ND
     RP --> ND
 
-    ND --> DF{"ModelChangeSet.Compare<br/>önceki ↔ sonraki model"}:::guard
-    DF -- "fark yok" --> NA["✗ Direktif uygulanmadı<br/>+ nedeni"]:::pending
+    ND --> DF{"ModelChangeSet.Compare<br/>önceki ↔ sonraki model<br/>(yerinde değişiklikler dahil)"}:::guard
+    DF -- "fark yok" --> RT["Bir kez daha: reprompt<br/>+ ilk denemenin notları<br/>modelin tamamı üzerinden"]:::llm
+    RT -- "yine fark yok" --> NA["✗ Direktif uygulanmadı<br/>+ nedeni"]:::pending
+    RT -- "fark var" --> OK
     DF -- "bazı direktifler başarısız" --> PA["⚠ Kısmen uygulandı<br/>uygulanan/uygulanmayan ayrı listelenir"]:::pending
     DF -- "fark var" --> OK["✓ Uygulandı<br/>gerçek diff gösterilir"]:::code
 
@@ -193,7 +196,20 @@ flowchart TD
 ```
 
 Mesaj kural listesine `CHAT-xx` olarak eklenir; o turda modele giren her öğe bu
-kimliği kaynak olarak taşır ve izlenebilirlik tablosunda görünür.
+kimliği kaynak olarak taşır ve izlenebilirlik tablosunda görünür. Yalnızca soru
+içeren mesaj kural sayılmaz ve listeye eklenmez.
+
+Router'ın tanımadığı kısım (`unsupported`) veya modelde bulunamayan tabloya
+atıf "anlaşılmadı" diye bırakılmaz: mesajın tamamı genel yoldan (reprompt)
+modele iletilir.
+
+### Silme koruması
+
+Reprompt, skill ve artımlı geliştirme yanıtlarındaki silme listeleri
+`RemovalGuard` süzgecinden geçer: silme ancak kullanıcının o turdaki talebi
+silme niyeti taşıyor ve öğenin adını anıyorsa uygulanır. Reddedilen silme
+"korunan öğeler" notuna düşer. Aynı yanıtta hem eklenip hem silinen ilişki
+korunur.
 
 ### Alanlar neden baştan yazılmaz
 
@@ -224,3 +240,19 @@ belirlenen adımdan itibaren çalışır (`PipelineStageMap.AffectedStage`):
 Adım 2 veya 3'ten başlanıyorsa kapsam temizlenir ve model bütün olarak
 değerlendirilir; daha sonraki adımlardan başlanıyorsa yalnızca etkilenen
 varlıklar LLM'e gönderilir.
+
+Model zaten varken yeniden çalışan adımlar modeli **baştan yazmaz**: varlık
+adımı yeni tabloları ekler, mevcutların yalnızca açıklama/kaynak bilgisini
+günceller; ilişki adımı ilişkileri ekler veya kardinalitesini günceller; alan
+adımı alanları birleştirir. Yanıtta dönmeyen öğe silinmez. Alan adımı bir alanı
+ancak bu turdaki cevap onu açıkça kaldırmayı istiyorsa (`removedFields`) siler.
+
+## Alan açıklamaları
+
+Her alan `description` taşır ve ER diyagramında gösterilir.
+
+1. Üretim/genişletme/sohbet prompt'ları her alan için yalın Türkçe açıklama ister.
+2. Deterministik katman (`FieldDescriptions.ApplyDefaults`) anahtar ve standart
+   alanların açıklamasını LLM'siz yazar.
+3. Çıktı adımından önce açıklaması hâlâ boş olan alanlar için tek bir
+   `skills/describe-fields.md` çağrısı yapılır. Dolu açıklamaya dokunulmaz.

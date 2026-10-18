@@ -12,6 +12,7 @@ ve `{{SOURCE_RULES}}` her dosyada otomatik olarak genişler.
 | `analyze-br-relations.md` | Üretimin 1. adımı: kurallar arası semantik ilişki | ✔ |
 | `router.md` | Sohbet mesajını yapılandırılmış direktiflere çevirir | ✔ (kalıp eşleşirse hiç çağrılmaz) |
 | `chat.md` | Tur uygulandıktan sonra kullanıcıya yanıt ve öneri yazar | ✔ |
+| `describe-fields.md` | Açıklaması boş kalan alanlar için yalın Türkçe açıklama yazar (ER diyagramında gösterilir) | ✔ |
 | `relationship-naming.md` | İlişki ve FK adlandırmasının tek kaynağı; üretim, soru ve sohbet prompt'larına `{{RELATION_RULES}}` olarak gömülür | ✔ |
 | `default-fields.md` | Her tabloya eklenen kurumsal standart alanların tek kaynağı; `{{STANDARD_FIELDS}}` olarak gömülür, alanları kod ekler | ✘ |
 | `add-field.md` | `add-field` direktifi | ✔ |

@@ -115,6 +115,8 @@ public class ChatReplyTests
               "unsupported": [] }
             """;
 
+        provider.RepromptResponseOverride = """{"entities":[],"relationships":[],"notes":[]}""";
+
         var (_, turn) = await pipeline.SendChatAsync(context, "Müşteri kimliğini kaldır");
 
         Assert.Equal(ChatTurnStatus.NotApplied, turn.Status);

@@ -22,7 +22,10 @@ public enum ChatTurnStatus
     Applied,
     PartiallyApplied,
     NotApplied,
-    Failed
+    Failed,
+
+    /// <summary>Kullanıcı soru sordu; model değiştirilmedi, yanıt verildi.</summary>
+    Answered
 }
 
 /// <summary>Bir sohbet turu: kullanıcı mesajı, yapılan iş ve gerçek diff.</summary>
@@ -52,11 +55,18 @@ public class ChatTurn
 
     public bool HasSuggestions => Suggestions.Count > 0;
 
+    /// <summary>Mesaj yalnızca soru içeriyordu; modele dokunulmadı.</summary>
+    public bool IsQuestionOnly { get; set; }
+
+    /// <summary>İlk deneme modeli değiştirmedi, ikinci denemede uygulandı.</summary>
+    public bool Retried { get; set; }
+
     public string StatusText => Status switch
     {
         ChatTurnStatus.Applied => "✓ Uygulandı",
         ChatTurnStatus.PartiallyApplied => "⚠ Kısmen uygulandı",
         ChatTurnStatus.NotApplied => "✗ Direktif uygulanmadı",
+        ChatTurnStatus.Answered => "💬 Yanıtlandı",
         _ => "✗ Hata"
     };
 }
