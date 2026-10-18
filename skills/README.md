@@ -13,6 +13,7 @@ ve `{{SOURCE_RULES}}` her dosyada otomatik olarak genişler.
 | `router.md` | Sohbet mesajını yapılandırılmış direktiflere çevirir | ✔ (kalıp eşleşirse hiç çağrılmaz) |
 | `chat.md` | Tur uygulandıktan sonra kullanıcıya yanıt ve öneri yazar | ✔ |
 | `relationship-naming.md` | İlişki ve FK adlandırmasının tek kaynağı; üretim, soru ve sohbet prompt'larına `{{RELATION_RULES}}` olarak gömülür | ✔ |
+| `default-fields.md` | Her tabloya eklenen kurumsal standart alanların tek kaynağı; `{{STANDARD_FIELDS}}` olarak gömülür, alanları kod ekler | ✘ |
 | `add-field.md` | `add-field` direktifi | ✔ |
 | `add-entity.md` | `add-entity` direktifi | ✔ |
 | `add-relation.md` | `add-relation` direktifi | ✔ |

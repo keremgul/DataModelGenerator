@@ -126,9 +126,12 @@ cevap uygulandığında kendiliğinden tetiklenmez (sonsuz soru döngüsünü ö
 5. `RelationshipRules.Apply` — `<TABLOADI>ID` kalıbına uyan alan yabancı anahtar
    sayılır, eksik ilişki kurulur, mükerrer tanım elenir, hedefi bulunamayan
    referans uyarıya döner.
-6. `NormalizationEngine.Apply` — `skills/NORMALIZATION_RULES.md` kurallarını
+6. `StandardFields.Apply` — `skills/default-fields.md` içindeki kurumsal standart
+   alanlar her tabloya eklenir (`GIRISTARIHI`, `DURUMKODU`…). Kaynakları `STD`'dir;
+   normalizasyondan ve soru üretiminden muaftırlar.
+7. `NormalizationEngine.Apply` — `skills/NORMALIZATION_RULES.md` kurallarını
    sırayla işletir; geçemeyen alan **modelden çıkarılır** ve beklemede listesine alınır.
-7. `ModelValidator.Validate`.
+8. `ModelValidator.Validate`.
 
 ## Artımlı geliştirme akışı
 

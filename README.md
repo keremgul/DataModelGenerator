@@ -76,6 +76,12 @@ Standart `%AppData%\DataModelGenerator\settings.json` içindeki `Naming` bölüm
 | `PrimaryKeyName` | `ID` | — |
 | `ForeignKeySuffix` | `ID` | — |
 
+## Kurumsal standart alanlar
+
+Her tabloya şu alanlar otomatik eklenir: `GIRISTARIHI`, `GIRISKULLANICIKODU`, `ISLEMTARIHI`, `ISLEMKULLANICIKODU`, `DURUMKODU`. Tek kaynağı [`skills/default-fields.md`](skills/default-fields.md) dosyasıdır; alan eklemek veya çıkarmak için orası düzenlenir.
+
+Bu alanlar business rule'dan türemediği için kaynakları `STD` olarak işlenir ve üç yerde muaf tutulur: kaynak zorunluluğundan (kaynaksız diye elenmezler), normalizasyondan (`STD-1` ile geçerler) ve **soru üretiminden** — anlamları ve zorunlulukları standartla belirli olduğu için kullanıcıya sorulmazlar. Modelin bu alanları üretmesi beklenmez; prompt'ta yazmaması istenir ve alanlar kod tarafında eklenir.
+
 İlişki ve yabancı anahtar adlandırmasının tek kaynağı [`skills/relationship-naming.md`](skills/relationship-naming.md) dosyasıdır: `<TABLOADI>ID` kalıbı ilişkinin kendisidir, aynı tabloya birden çok referans için `<ROL><TABLOADI>ID` kullanılır (`GONDERENMUSTERIID`). Bu dosya model üretimi, soru üretimi ve sohbet prompt'larına bağlam olarak gider; kod tarafı kalıba uyan alanı otomatik yabancı anahtar sayar, mükerrer ilişkileri eler ve hedefi bulunamayan referans için uyarı üretir.
 
 ## Mimari
