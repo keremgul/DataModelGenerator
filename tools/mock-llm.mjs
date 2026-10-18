@@ -62,6 +62,21 @@ function route(systemPrompt) {
 }
 
 const routes = [
+  // Artımlı geliştirme: yalnızca yeni kuralın gerektirdiği delta döner.
+  ['ELİNDE ÇALIŞAN BİR MODEL VAR', JSON.stringify({
+    entities: [{
+      name: 'Fatura',
+      description: 'Müşteriye kesilen ödeme belgesi',
+      sources: ['BR-3'],
+      confidence: 'kesin',
+      attributes: [
+        { name: 'ID', primaryKey: true, required: true, unique: true, sources: ['BR-3'], confidence: 'kesin' },
+        { name: 'MUSTERIID', foreignKey: true, references: 'MUSTERI', referencesAttribute: 'ID', required: true, sources: ['BR-3'], confidence: 'kesin' }
+      ]
+    }],
+    relationships: [],
+    notes: []
+  })],
   ['Skill: Sohbet Yanıtı', JSON.stringify({
     reply: 'İstediğin değişikliği uyguladım; modelin güncel hali sağdaki diyagramda.',
     suggestions: [
