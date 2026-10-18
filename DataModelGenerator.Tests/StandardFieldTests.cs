@@ -200,6 +200,23 @@ public class StandardFieldTests
     }
 
     [Fact]
+    public void IzlenebilirlikTablosu_STDKaynaginiAciklar()
+    {
+        var model = ModelWith();
+        StandardFields.Apply(model);
+
+        var package = new ModelPackage { Model = model };
+        var input = new ProjectInput { Rules = { new BusinessRule { Id = "BR-01", Text = "Müşteri vardır." } } };
+
+        var table = TraceabilityTable.Build(package, input);
+        var row = table.Entries.Single(e => e.Attribute == "DURUMKODU");
+
+        Assert.Equal("STD", row.Badges);
+        Assert.Contains("Kurumsal standart alan", row.Tooltip);
+        Assert.DoesNotContain("bulunamadı", row.Tooltip);
+    }
+
+    [Fact]
     public void SkillDosyasi_AlanlariBelgeler()
     {
         var text = new SkillLibrary().Get("default-fields");

@@ -158,9 +158,7 @@ public class TraceabilityTable
                     : entity.SourceRuleIds;
 
                 var entrySources = ruleIds
-                    .Select(id => sources.TryGetValue(id, out var source)
-                        ? source
-                        : new TraceSource { RuleId = id, Kind = KindOf(id), Text = "(kural listesinde bulunamadı)" })
+                    .Select(id => sources.TryGetValue(id, out var source) ? source : Unknown(id))
                     .ToList();
 
                 foreach (var source in entrySources) source.UsageCount++;
@@ -206,6 +204,23 @@ public class TraceabilityTable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Kural listesinde olmayan kaynak. Standart alanların kaynağı kurumsal
+    /// standarttır; "bulunamadı" demek yanıltıcı olur.
+    /// </summary>
+    private static TraceSource Unknown(string ruleId)
+    {
+        if (ruleId.Equals(Rules.StandardFields.SourceId, StringComparison.OrdinalIgnoreCase))
+            return new TraceSource
+            {
+                RuleId = ruleId,
+                Kind = "STD",
+                Text = "Kurumsal standart alan — business rule'dan türemez, her tabloya eklenir."
+            };
+
+        return new TraceSource { RuleId = ruleId, Kind = KindOf(ruleId), Text = "(kural listesinde bulunamadı)" };
     }
 
     private static string KindOf(string ruleId)

@@ -53,11 +53,19 @@ public class ProjectInput
     public string NextRuleId(RuleOrigin origin)
     {
         var prefix = PrefixOf(origin);
-        var max = Rules
+        var existing = Rules
             .Where(r => r.Origin == origin && r.Id.StartsWith(prefix + "-", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var max = existing
             .Select(r => int.TryParse(r.Id[(prefix.Length + 1)..], out var n) ? n : 0)
             .DefaultIfEmpty(0)
             .Max();
-        return $"{prefix}-{max + 1}";
+
+        // Mevcut kurallar sıfır dolgulu yazılmışsa (BR-01) yenisi de öyle olur;
+        // aksi halde listede BR-01, BR-02, BR-3 gibi karışık numaralar oluşuyordu.
+        var padded = existing.Any(r => r.Id[(prefix.Length + 1)..].StartsWith('0'));
+
+        return padded ? $"{prefix}-{max + 1:00}" : $"{prefix}-{max + 1}";
     }
 }
