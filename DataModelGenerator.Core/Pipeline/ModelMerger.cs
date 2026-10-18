@@ -58,6 +58,8 @@ public static class ModelMerger
 
             if (!string.IsNullOrWhiteSpace(attribute.ConfidenceReason))
                 existing.ConfidenceReason = attribute.ConfidenceReason;
+            if (!string.IsNullOrWhiteSpace(attribute.Description) && !existing.DescriptionByUser)
+                existing.Description = attribute.Description;
             if (!string.IsNullOrWhiteSpace(attribute.ReferencesEntity))
                 existing.ReferencesEntity = attribute.ReferencesEntity;
             if (!string.IsNullOrWhiteSpace(attribute.ReferencesAttribute))

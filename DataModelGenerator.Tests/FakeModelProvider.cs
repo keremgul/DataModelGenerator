@@ -22,6 +22,14 @@ internal class FakeModelProvider : IModelProvider
     public string AttributesResponse { get; set; } = DefaultAttributes;
     public string RelationshipsResponse { get; set; } = DefaultRelationships;
     public string? RepromptResponseOverride { get; set; }
+
+    /// <summary>Sıradaki reprompt çağrılarına sırayla verilecek yanıtlar; boşsa override/varsayılan.</summary>
+    public Queue<string> RepromptQueue { get; } = new();
+
+    public string EntitiesResponse { get; set; } = DefaultEntities;
+
+    /// <summary>Null ise add-relation skill'i için yanıt verilmez (bilinmeyen).</summary>
+    public string? AddRelationResponse { get; set; }
     public string GapsResponseOverride { get; set; } = GapsResponse;
     public string QuestionsResponseOverride { get; set; } = QuestionsResponse;
     public string SummaryResponseOverride { get; set; } = SummaryResponse;
@@ -41,6 +49,7 @@ internal class FakeModelProvider : IModelProvider
         if (systemPrompt.Contains("DEĞİŞTİRİLECEK KAPSAM"))
         {
             Stages.Add("reprompt");
+            if (RepromptQueue.Count > 0) return Task.FromResult(RepromptQueue.Dequeue());
             return Task.FromResult(RepromptResponseOverride ?? RepromptResponse);
         }
         if (systemPrompt.Contains("ELİNDE ÇALIŞAN BİR MODEL VAR"))
@@ -63,7 +72,17 @@ internal class FakeModelProvider : IModelProvider
             Stages.Add("add-field");
             return Task.FromResult(AddFieldResponse);
         }
-        if (systemPrompt.Contains("Business Rule İlişki Analizi"))
+        if (AddRelationResponse is not null && systemPrompt.Contains("Skill: İlişki Ekle"))
+        {
+            Stages.Add("add-relation");
+            return Task.FromResult(AddRelationResponse);
+        }
+                if (systemPrompt.Contains("Skill: Alan Açıklamaları"))
+        {
+            Stages.Add("describe");
+            return Task.FromResult(DescribeResponseOverride ?? DescribeAll(systemPrompt));
+        }
+                if (systemPrompt.Contains("Business Rule İlişki Analizi"))
         {
             Stages.Add("rule-relations");
             return Task.FromResult(RuleRelationsResponse);
@@ -71,7 +90,7 @@ internal class FakeModelProvider : IModelProvider
         if (systemPrompt.Contains("VARLIK (entity) adaylarını"))
         {
             Stages.Add("extraction");
-            return Task.FromResult(DefaultEntities);
+            return Task.FromResult(EntitiesResponse);
         }
         if (systemPrompt.Contains("İLİŞKİLERİ ve KARDİNALİTELERİ"))
         {
@@ -106,6 +125,35 @@ internal class FakeModelProvider : IModelProvider
 
         Stages.Add("bilinmeyen");
         return Task.FromResult("{}");
+    }
+
+    /// <summary>Null ise FIELDS listesindeki her alana "<ALAN> açıklaması" yazılır.</summary>
+    public string? DescribeResponseOverride { get; set; }
+
+    /// <summary>Prompt'taki FIELDS bölümünü okuyup her alan için açıklama döndürür.</summary>
+    private static string DescribeAll(string prompt)
+    {
+        var section = prompt[(prompt.LastIndexOf("### FIELDS", StringComparison.Ordinal) + "### FIELDS".Length)..];
+        var items = new List<string>();
+        var entity = string.Empty;
+
+        foreach (var raw in section.Split('\n'))
+        {
+            var line = raw.TrimEnd();
+            if (line.StartsWith("- Tablo: "))
+            {
+                entity = line["- Tablo: ".Length..].Split(' ')[0];
+                continue;
+            }
+
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith("- ") || entity.Length == 0) continue;
+
+            var field = trimmed[2..].Split(' ')[0];
+            items.Add($$"""{"entity":"{{entity}}","field":"{{field}}","description":"{{field}} açıklaması"}""");
+        }
+
+        return $$"""{"descriptions":[{{string.Join(",", items)}}]}""";
     }
 
     /// <summary>Artımlı geliştirme: yalnızca yeni kuralın gerektirdiği delta.</summary>

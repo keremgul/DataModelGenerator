@@ -27,7 +27,7 @@ Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yaz
         {
           "name": "ID",
           "isPrimaryKey": true,
-          "description": "Birincil anahtar",
+          "description": "Her faturayı ayırt eden benzersiz numara",
           "sources": ["{{RULE_ID}}"],
           "confidence": "kesin"
         }
@@ -48,6 +48,9 @@ Yalnızca geçerli bir JSON nesnesi döndür; açıklama veya markdown çiti yaz
   anahtar adı hedef tablo adı + `ID` olur.
 - Aynı anlamda bir tablo modelde zaten varsa yeni tablo açma; `notes` içine
   hangi tabloyla çakıştığını yaz.
+
+- Her alan için `description` yaz: alanın ne tuttuğunu yalın Türkçe, tek kısa
+  cümleyle anlat; teknik terim (PK, FK, varchar…) kullanma.
 
 ## Girdi verisi
 

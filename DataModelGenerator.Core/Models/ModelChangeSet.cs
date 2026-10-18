@@ -15,15 +15,22 @@ public class ModelChangeSet
     public List<string> AddedRelationships { get; } = new();
     public List<string> RemovedRelationships { get; } = new();
 
-    public bool IsEmpty =>
-        AddedEntities.Count == 0 && RemovedEntities.Count == 0 &&
-        AddedAttributes.Count == 0 && RemovedAttributes.Count == 0 &&
-        AddedRelationships.Count == 0 && RemovedRelationships.Count == 0;
+    /// <summary>
+    /// Yerinde değişen öğeler: zorunluluk, tekillik, anahtar, açıklama,
+    /// kardinalite… Bunlar sayılmadığında "X alanını zorunlu yap" gibi bir
+    /// talep uygulansa bile tur "değişiklik yok" diye işaretleniyordu.
+    /// </summary>
+    public List<string> ModifiedEntities { get; } = new();
+    public List<string> ModifiedAttributes { get; } = new();
+    public List<string> ModifiedRelationships { get; } = new();
+
+    public bool IsEmpty => TotalChanges == 0;
 
     public int TotalChanges =>
         AddedEntities.Count + RemovedEntities.Count +
         AddedAttributes.Count + RemovedAttributes.Count +
-        AddedRelationships.Count + RemovedRelationships.Count;
+        AddedRelationships.Count + RemovedRelationships.Count +
+        ModifiedEntities.Count + ModifiedAttributes.Count + ModifiedRelationships.Count;
 
     public static ModelChangeSet Compare(DataModel before, DataModel after)
     {
@@ -50,6 +57,21 @@ public class ModelChangeSet
 
             foreach (var removed in beforeAttributes.Except(afterAttributes, StringComparer.OrdinalIgnoreCase))
                 changes.RemovedAttributes.Add($"{afterEntity.TechnicalName}.{removed}");
+
+            if (!string.Equals(beforeEntity.Description.Trim(), afterEntity.Description.Trim(), StringComparison.Ordinal))
+                changes.ModifiedEntities.Add($"{afterEntity.TechnicalName} (açıklama)");
+
+            foreach (var afterAttribute in afterEntity.Attributes)
+            {
+                var beforeAttribute = beforeEntity.Attributes.FirstOrDefault(a =>
+                    a.TechnicalName.Equals(afterAttribute.TechnicalName, StringComparison.OrdinalIgnoreCase));
+                if (beforeAttribute is null) continue;
+
+                var details = AttributeDifferences(beforeAttribute, afterAttribute);
+                if (details.Count > 0)
+                    changes.ModifiedAttributes.Add(
+                        $"{afterEntity.TechnicalName}.{afterAttribute.TechnicalName} ({string.Join(", ", details)})");
+            }
         }
 
         var beforeRelationships = before.Relationships.Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -58,10 +80,47 @@ public class ModelChangeSet
         changes.AddedRelationships.AddRange(afterRelationships.Except(beforeRelationships, StringComparer.OrdinalIgnoreCase));
         changes.RemovedRelationships.AddRange(beforeRelationships.Except(afterRelationships, StringComparer.OrdinalIgnoreCase));
 
+        foreach (var afterRelationship in after.Relationships)
+        {
+            var beforeRelationship = before.Relationships.FirstOrDefault(r =>
+                Key(r).Equals(Key(afterRelationship), StringComparison.OrdinalIgnoreCase));
+            if (beforeRelationship is null) continue;
+
+            var details = new List<string>();
+            if (beforeRelationship.Cardinality != afterRelationship.Cardinality)
+                details.Add($"kardinalite {beforeRelationship.Cardinality} → {afterRelationship.Cardinality}");
+            if (beforeRelationship.IsRequired != afterRelationship.IsRequired)
+                details.Add(afterRelationship.IsRequired ? "zorunlu oldu" : "opsiyonel oldu");
+
+            if (details.Count > 0)
+                changes.ModifiedRelationships.Add($"{Key(afterRelationship)} ({string.Join(", ", details)})");
+        }
+
         return changes;
 
         static string Key(Relationship relationship) =>
             $"{relationship.FromEntity} → {relationship.ToEntity}";
+    }
+
+    private static List<string> AttributeDifferences(EntityAttribute before, EntityAttribute after)
+    {
+        var details = new List<string>();
+
+        if (before.IsRequired != after.IsRequired)
+            details.Add(after.IsRequired ? "zorunlu oldu" : "opsiyonel oldu");
+        if (before.IsUnique != after.IsUnique)
+            details.Add(after.IsUnique ? "tekil oldu" : "tekillik kalktı");
+        if (before.IsPrimaryKey != after.IsPrimaryKey)
+            details.Add(after.IsPrimaryKey ? "birincil anahtar oldu" : "birincil anahtar olmaktan çıktı");
+        if (before.IsForeignKey != after.IsForeignKey ||
+            !string.Equals(before.ReferencesEntity ?? "", after.ReferencesEntity ?? "", StringComparison.OrdinalIgnoreCase))
+            details.Add(string.IsNullOrWhiteSpace(after.ReferencesEntity)
+                ? "yabancı anahtar kalktı"
+                : $"→ {after.ReferencesEntity}");
+        if (!string.Equals(before.Description.Trim(), after.Description.Trim(), StringComparison.Ordinal))
+            details.Add("açıklama");
+
+        return details;
     }
 
     /// <summary>Kullanıcıya gösterilecek, ne olduğunu tek tek sayan özet.</summary>
@@ -76,6 +135,9 @@ public class ModelChangeSet
         Append(sb, "Kaldırılan alan", RemovedAttributes);
         Append(sb, "Eklenen ilişki", AddedRelationships);
         Append(sb, "Kaldırılan ilişki", RemovedRelationships);
+        Append(sb, "Değişen tablo", ModifiedEntities);
+        Append(sb, "Değişen alan", ModifiedAttributes);
+        Append(sb, "Değişen ilişki", ModifiedRelationships);
 
         return sb.ToString().TrimEnd();
 

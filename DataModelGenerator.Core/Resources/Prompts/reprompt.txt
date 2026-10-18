@@ -16,6 +16,9 @@ KULLANICININ DEĞİŞİKLİK TALEBİ:
 {{REQUEST}}
 
 GÖREV:
+- **Talebi UYGULA.** Ne yapılması gerektiğini "notes" altında anlatıp JSON'da uygulamamak değişiklik sayılmaz; talep model üzerinde bir değişiklik gerektiriyorsa o değişikliği mutlaka "entities", "relationships" veya kaldırma listelerinde döndür. "notes" yalnızca ek bilgi içindir.
+- **Talepte açıkça istenmeyen hiçbir şeyi silme, yeniden adlandırma veya anlamını değiştirme.** Bu bir düzenleme turudur, modeli baştan kurma turu değil. Kullanıcının istemediği silmeler kod tarafında reddedilir.
+- Talep bir alanın özelliğini (zorunlu/opsiyonel, tekil, açıklama) değiştiriyorsa alanı yeni değeriyle "attributes" altında döndür.
 - **Yalnızca DEĞİŞEN varlıkları, alanları ve ilişkileri döndür.** Çıktıda yer almayan hiçbir şey silinmez; dokunmadığın her şey olduğu gibi korunur.
 - Bir varlığı tüm alanlarıyla döndürmen gerekmez: döndürdüğün alanlar mevcut listeye eklenerek birleştirilir, yazmadığın alanlar korunur.
 - **Silmek istediğin alanları "removedFields" listesine {"entity": "...", "field": "..."} olarak yaz.** Alanı çıktıdan çıkarmak silme anlamına GELMEZ.
@@ -25,6 +28,7 @@ GÖREV:
 - Talep yeni bir varlık gerektiriyorsa (örn. N-N için ara tablo) onu da "entities" altında döndür.
 - KAPSAM belirli varlıkları listeliyorsa yalnızca onları değiştir; başka bir varlıkta değişiklik gerekiyorsa bunu "notes" altında yaz. KAPSAM "TÜM MODEL" ise talimatı ilgili tüm varlıklara uygula.
 - Alanlar için veri tipi veya uzunluk verme; kavramsal modelde tip bilgisi tutulmaz.
+- Her alan için "description" yaz: alanın ne tuttuğunu iş dünyasından birinin anlayacağı **yalın Türkçe** ile, tek kısa cümleyle anlat (en fazla ~12 kelime). Teknik terim (PK, FK, varchar, nullable…) ve alan adının tekrarını kullanma. Örnek: "Müşterinin vergi dairesine kayıtlı numarası".
 - Kaynak kural ID'lerini koru; kullanıcı talebinden gelen değişiklikler için ilgili cevap kuralının ID'sini kullan.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
@@ -43,6 +47,7 @@ GÖREV:
           "referencesAttribute": null,
           "required": true,
           "unique": true,
+          "description": "Siparişe verilen, her siparişte farklı olan numara",
           "sourceRuleIds": ["BR-2"],
           "confidence": 0.9,
           "confidenceReason": "..."

@@ -73,6 +73,9 @@ Hem kaynak tabloyu (taşınan alanlar çıkarılmış hâliyle) hem yeni tabloyu
 - Kaynak tabloyu `removedEntities` ile silmeye çalışma; alanları çıkarılmış hâli
   `entities` içinde döner.
 
+- Her alan için `description` yaz: alanın ne tuttuğunu yalın Türkçe, tek kısa
+  cümleyle anlat; teknik terim (PK, FK, varchar…) kullanma.
+
 ## Girdi verisi
 
 ### RULES

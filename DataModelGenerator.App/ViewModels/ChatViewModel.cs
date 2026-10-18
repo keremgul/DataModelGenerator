@@ -99,9 +99,12 @@ public partial class ChatViewModel : ObservableObject, IRefreshable
             {
                 ChatTurnStatus.Applied => "#2E7D32",
                 ChatTurnStatus.PartiallyApplied => "#B36B00",
+                ChatTurnStatus.Answered => "#2F5496",
                 _ => "#B3261E"
             },
-            ChangeSummary = $"{turn.Changes.TotalChanges} değişiklik",
+            ChangeSummary = turn.Status == ChatTurnStatus.Answered
+                ? "model değişmedi"
+                : $"{turn.Changes.TotalChanges} değişiklik" + (turn.Retried ? " (ikinci denemede)" : string.Empty),
             Reply = turn.Reply
         };
 
@@ -147,11 +150,15 @@ public partial class ChatViewModel : ObservableObject, IRefreshable
             Message = string.Empty;
 
             Turns.Add(ToItem(turn));
-            if (turn.Status != ChatTurnStatus.NotApplied) _main.CompleteStep(4);
+            if (turn.Status is not (ChatTurnStatus.NotApplied or ChatTurnStatus.Answered)) _main.CompleteStep(4);
 
-            ProgressText = turn.Status == ChatTurnStatus.NotApplied
-                ? $"{turn.StatusText} — model üzerinde fark oluşmadı. Talebi daha açık yazmayı deneyin."
-                : $"{turn.StatusText} — {turn.Changes.TotalChanges} değişiklik ({turn.RuleId}, tur {package.RoundNumber}).";
+            ProgressText = turn.Status switch
+            {
+                ChatTurnStatus.NotApplied =>
+                    $"{turn.StatusText} — model üzerinde fark oluşmadı. Tablo ve alan adını modelde göründüğü gibi yazmayı deneyin.",
+                ChatTurnStatus.Answered => $"{turn.StatusText} — model değiştirilmedi.",
+                _ => $"{turn.StatusText} — {turn.Changes.TotalChanges} değişiklik ({turn.RuleId}, tur {package.RoundNumber})."
+            };
             _main.SetStatus(ProgressText);
         }
         catch (PipelineException ex)

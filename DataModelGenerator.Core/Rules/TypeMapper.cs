@@ -155,7 +155,7 @@ public static class TypeMapper
             return "BOOLEAN";
 
         // Kelime sınırında eşleşme aranır; "ürün adedi" içindeki "ad" gibi parça eşleşmeler kabul edilmez.
-        var words = lower.Split([' ', '_', '-', '.', '/'], StringSplitOptions.RemoveEmptyEntries);
+        var words = lower.Split(new[] { ' ', '_', '-', '.', '/' }, StringSplitOptions.RemoveEmptyEntries);
         foreach (var (keyword, type) in NameHints)
         {
             if (lower.EndsWith(keyword) || words.Any(word => MatchesWord(word, keyword)))

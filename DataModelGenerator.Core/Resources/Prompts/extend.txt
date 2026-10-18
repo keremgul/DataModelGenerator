@@ -30,6 +30,7 @@ GÖREV:
 - Mevcut bir tabloyu yeniden adlandırman gerekiyorsa bunu yapma; "notes" altında gerekçesiyle belirt.
 - Alanlar için veri tipi veya uzunluk verme; kavramsal modelde tip bilgisi tutulmaz.
 - Her yeni öğenin "sources" alanına onu doğuran YENİ kuralın kimliğini yaz.
+- Her alan için "description" yaz: alanın ne tuttuğunu iş dünyasından birinin anlayacağı **yalın Türkçe** ile, tek kısa cümleyle anlat (en fazla ~12 kelime). Teknik terim (PK, FK, varchar, nullable…) ve alan adının tekrarını kullanma. Örnek: "Müşterinin vergi dairesine kayıtlı numarası".
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
 {
@@ -54,6 +55,7 @@ GÖREV:
           "references": "MUSTERI",
           "referencesAttribute": "ID",
           "required": true,
+          "description": "Faturanın kesildiği müşteri",
           "sources": ["BR-07"],
           "confidence": "kesin"
         }

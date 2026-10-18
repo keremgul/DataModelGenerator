@@ -35,6 +35,14 @@ kuralları belgeler.
 - İlişki iki yönde de aranır; bulunamazsa işlem uygulanmaz.
 - İlişkiyle birlikte yabancı anahtar da temizlenir.
 
+## set-description — alan veya tablo açıklamasını yaz
+- `field` boşsa açıklama tablonun kendisine yazılır.
+- Kalıp eşleşmesiyle de çalışır: "Sipariş tablosundaki Tutar alanının açıklaması 'Siparişin toplam tutarı' olsun".
+- Yazılan açıklama sonraki turlarda üzerine yazılmaz; otomatik açıklama yalnızca boş alanları doldurur.
+
+## update-field — zorunluluk / tekillik
+- `required` ve/veya `unique` değeri verilir; verilmeyen özellik değişmez.
+
 ## change-cardinality — kardinaliteyi değiştir
 - Yeni kardinalite `1-1`, `1-N`, `N-1` veya `N-M` olmalıdır.
 - `N-M`'ye dönen ilişki için ara tablo kod tarafında otomatik oluşturulur.

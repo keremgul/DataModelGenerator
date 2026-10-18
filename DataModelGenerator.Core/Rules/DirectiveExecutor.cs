@@ -29,6 +29,8 @@ public static class DirectiveExecutor
             DirectiveOperation.RemoveEntity => RemoveEntity(model, directive),
             DirectiveOperation.RemoveRelation => RemoveRelation(model, directive),
             DirectiveOperation.ChangeCardinality => ChangeCardinality(model, directive, ruleId),
+            DirectiveOperation.SetDescription => SetDescription(model, directive, ruleId),
+            DirectiveOperation.UpdateField => UpdateField(model, directive, ruleId),
             _ => DirectiveResult.Fail($"'{directive.Operation}' işlemi doğrudan uygulanamıyor.")
         };
 
@@ -208,6 +210,68 @@ public static class DirectiveExecutor
             Applied = true,
             Message = $"Kardinalite {previous} → {directive.Cardinality} olarak değiştirildi.",
             AffectedEntities = [relationship.FromEntity, relationship.ToEntity]
+        };
+    }
+
+    private static DirectiveResult SetDescription(DataModel model, ChatDirective directive, string ruleId)
+    {
+        var entity = model.FindEntity(directive.Entity);
+        if (entity is null) return DirectiveResult.Fail($"'{directive.Entity}' tablosu bulunamadı.");
+
+        var text = directive.Description.Trim();
+        if (text.Length == 0) return DirectiveResult.Fail("Yazılacak açıklama belirtilmedi.");
+
+        // Alan belirtilmediyse açıklama tablonun kendisine yazılır.
+        if (string.IsNullOrWhiteSpace(directive.Field))
+        {
+            entity.Description = text;
+            if (!entity.SourceRuleIds.Contains(ruleId)) entity.SourceRuleIds.Add(ruleId);
+
+            return new DirectiveResult
+            {
+                Applied = true,
+                Message = $"'{entity.TechnicalName}' tablosunun açıklaması güncellendi.",
+                AffectedEntities = [entity.TechnicalName]
+            };
+        }
+
+        var attribute = FindAttribute(entity, directive.Field);
+        if (attribute is null)
+            return DirectiveResult.Fail($"'{directive.Entity}' tablosunda '{directive.Field}' alanı bulunamadı.");
+
+        attribute.Description = text;
+        attribute.DescriptionByUser = true;
+        if (!attribute.SourceRuleIds.Contains(ruleId)) attribute.SourceRuleIds.Add(ruleId);
+
+        return new DirectiveResult
+        {
+            Applied = true,
+            Message = $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanının açıklaması güncellendi.",
+            AffectedEntities = [entity.TechnicalName]
+        };
+    }
+
+    private static DirectiveResult UpdateField(DataModel model, ChatDirective directive, string ruleId)
+    {
+        var entity = model.FindEntity(directive.Entity);
+        if (entity is null) return DirectiveResult.Fail($"'{directive.Entity}' tablosu bulunamadı.");
+
+        var attribute = FindAttribute(entity, directive.Field);
+        if (attribute is null)
+            return DirectiveResult.Fail($"'{directive.Entity}' tablosunda '{directive.Field}' alanı bulunamadı.");
+
+        if (directive.Required is null && directive.Unique is null)
+            return DirectiveResult.Fail("Alanın hangi özelliğinin değişeceği belirtilmedi.");
+
+        if (directive.Required is { } required) attribute.IsRequired = required;
+        if (directive.Unique is { } unique) attribute.IsUnique = unique;
+        if (!attribute.SourceRuleIds.Contains(ruleId)) attribute.SourceRuleIds.Add(ruleId);
+
+        return new DirectiveResult
+        {
+            Applied = true,
+            Message = $"'{entity.TechnicalName}.{attribute.TechnicalName}' alanı güncellendi.",
+            AffectedEntities = [entity.TechnicalName]
         };
     }
 

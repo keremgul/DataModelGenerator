@@ -62,6 +62,7 @@ function route(systemPrompt) {
 }
 
 const routes = [
+  ['Skill: Alan Açıklamaları', JSON.stringify({ descriptions: [] })],
   // Artımlı geliştirme: yalnızca yeni kuralın gerektirdiği delta döner.
   ['ELİNDE ÇALIŞAN BİR MODEL VAR', JSON.stringify({
     entities: [{

@@ -50,6 +50,9 @@ birleştirilir, dönmeyen alanlar olduğu gibi korunur.
   `removedRelationships` kullanma.
 - MODEL içinde zaten var olan alanları tekrar yazmana gerek yok; yazmazsan silinmezler.
 
+- Her alan için `description` yaz: alanın ne tuttuğunu yalın Türkçe, tek kısa
+  cümleyle anlat; teknik terim (PK, FK, varchar…) kullanma.
+
 ## Girdi verisi
 
 ### RULES

@@ -37,6 +37,8 @@ GÖREV:
 - Kurallarda geçmeyen alan uydurma. Audit alanları (oluşturma tarihi vb.) EKLEME; bunlar ayrıca öneri olarak sunulacak.
 - Bir alanın gerekli olup olmadığından emin değilsen "confidence": "belirsiz" yaz; o alan modele eklenmez, kullanıcıya sorulur.
 - Her alan için kaynak kural ID'lerini yaz.
+- Her alan için "description" yaz: alanın ne tuttuğunu iş dünyasından birinin anlayacağı **yalın Türkçe** ile, tek kısa cümleyle anlat (en fazla ~12 kelime). Teknik terim (PK, FK, varchar, nullable…) ve alan adının tekrarını kullanma. Örnek: "Müşterinin vergi dairesine kayıtlı numarası".
+- VARLIKLAR'da zaten alanları olan bir tablo için yazmadığın alan SİLİNMEZ; yanıtın mevcut alanlara eklenerek birleştirilir. Bir bağlayıcı cevap bir alanın kaldırılmasını AÇIKÇA istiyorsa onu "removedFields" listesine {"entity": "...", "field": "..."} olarak yaz; başka hiçbir durumda alan kaldırma.
 
 ÇIKTI: Yalnızca aşağıdaki şemada geçerli bir JSON nesnesi döndür. Açıklama, markdown çiti veya ek metin yazma.
 {
@@ -52,11 +54,13 @@ GÖREV:
           "referencesAttribute": null,
           "required": true,
           "unique": true,
+          "description": "Müşteriye verilen, her müşteride farklı olan numara",
           "sources": ["BR-01"],
           "confidence": "kesin",
           "confidenceReason": "BR-01 müşteri numarasının tekil olduğunu söylüyor"
         }
       ]
     }
-  ]
+  ],
+  "removedFields": []
 }

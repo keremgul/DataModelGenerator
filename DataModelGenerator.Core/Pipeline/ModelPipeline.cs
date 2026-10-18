@@ -62,6 +62,7 @@ public class ModelPipeline
         if (texts.Count == 0)
             throw new InvalidOperationException("Eklenecek kural yok.");
 
+        FieldDescriptions.ApplyDefaults(context.Model);
         var before = ModelJson.Deserialize(ModelJson.Serialize(context.Model))!;
         var existingRules = FormatRules(context.Input);
 
@@ -95,7 +96,7 @@ public class ModelPipeline
         });
 
         var response = await _llm.SendAsync(PipelineStage.Extraction, prompt, ct);
-        MergeModelResponse(context, response, added[0].Id);
+        MergeModelResponse(context, response, added[0].Id, RemovalGuard.FromRequest(string.Join("\n", texts)));
 
         progress?.Report("Model doğrulanıyor…");
         ApplyDeterministicLayer(context);
@@ -216,6 +217,9 @@ public class ModelPipeline
         if (context.Model.Entities.Count == 0)
             throw new InvalidOperationException("Önce bir model üretilmelidir.");
 
+        // Otomatik açıklamalar karşılaştırmadan önce yazılır; aksi halde
+        // açıklamasız eski bir modelde hiçbir şey yapmayan tur "uygulandı" görünürdü.
+        FieldDescriptions.ApplyDefaults(context.Model);
         var before = ModelJson.Deserialize(ModelJson.Serialize(context.Model))!;
 
         var ruleId = context.Input.NextRuleId(RuleOrigin.Chat);
@@ -229,13 +233,37 @@ public class ModelPipeline
         var turn = new ChatTurn { UserMessage = message.Trim(), RuleId = ruleId };
         context.ChatTurns.Add(turn);
 
+        // Yeniden denemede yalnızca bu turun notları geri verilsin.
+        context.RepromptNotes.Clear();
+
         progress?.Report("Direktif çözümleniyor…");
         turn.Directives = await RouteAsync(context, message, turn, ct);
+
+        // Yalnızca soru soruluyorsa model değişmez; yanıt modele bakılarak yazılır.
+        var changeDirectives = turn.Directives.Where(d => d.Operation != DirectiveOperation.Question).ToList();
+        turn.IsQuestionOnly = changeDirectives.Count == 0 &&
+                              turn.Directives.Count > 0 &&
+                              turn.Unsupported.Count == 0;
+
+        if (turn.IsQuestionOnly)
+        {
+            // Soru bir kural değildir; kural listesinde ve izlenebilirlikte iz bırakmaz.
+            context.Input.Rules.RemoveAll(r => r.Id == ruleId);
+            turn.RuleId = string.Empty;
+            turn.Status = ChatTurnStatus.Answered;
+
+            progress?.Report("Yanıt hazırlanıyor…");
+            await WriteChatReplyAsync(context, turn, ct);
+
+            var answered = await SerializeAsync(context, progress, ct);
+            answered.LastChatTurn = turn;
+            return (answered, turn);
+        }
 
         var affected = new List<string>();
         var needsModelCall = false;
 
-        foreach (var directive in turn.Directives)
+        foreach (var directive in changeDirectives)
         {
             if (directive.IsDeterministic)
             {
@@ -259,6 +287,7 @@ public class ModelPipeline
                 {
                     affected.Add(directive.Entity);
                     affected.Add(directive.TargetEntity);
+                    affected.Add(directive.NewName);
                     continue;
                 }
             }
@@ -271,30 +300,70 @@ public class ModelPipeline
             needsModelCall = true;
         }
 
-        // Skill'i olmayan veya hiç direktife çevrilemeyen talepler genel yola düşer.
-        if (needsModelCall || turn.Directives.Count == 0)
+        // Skill'i olmayan, hiç direktife çevrilemeyen veya bir kısmı router'ın
+        // işlem listesine girmeyen talepler genel yola düşer: "anlaşılmadı" deyip
+        // bırakmak yerine mesajın tamamı modele iletilir.
+        if (needsModelCall || changeDirectives.Count == 0 || turn.Unsupported.Count > 0)
         {
             progress?.Report("Talep modele iletiliyor…");
-            var scope = turn.Directives
-                .Where(d => !string.IsNullOrWhiteSpace(d.Entity))
-                .Select(d => d.Entity)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var scope = turn.Unsupported.Count > 0
+                ? new List<string>()
+                : changeDirectives
+                    .Where(d => !string.IsNullOrWhiteSpace(d.Entity))
+                    .Select(d => d.Entity)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
-            await ApplyRepromptResponseAsync(context, scope, message, ruleId, ct);
-            affected.AddRange(scope);
+            try
+            {
+                await ApplyRepromptResponseAsync(context, scope, message, ruleId, ct);
+                affected.AddRange(context.Scope);
+            }
+            catch (PipelineException ex)
+            {
+                turn.NotApplied.Add($"Talep modele uygulanamadı: {ex.Message}");
+            }
         }
 
         progress?.Report("Model doğrulanıyor…");
-        var scopeNames = affected
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        // Yalnızca etkilenen tablolar yeniden normalize edilir; model bütün olarak doğrulanır.
-        ApplyDeterministicLayer(context, scopeNames.Count > 0 ? scopeNames : null);
-
+        ApplyChatDeterministicLayer(context, affected);
         turn.Changes = ModelChangeSet.Compare(before, context.Model);
+
+        // Model talebi açıklamasında doğru tarif edip JSON'da uygulamadıysa
+        // "anlaşılmadı" denmez: önceki denemenin notlarıyla bir kez daha,
+        // bu kez modelin tamamı üzerinden ve uygulamanın şart olduğu
+        // vurgulanarak istenir.
+        if (turn.Changes.IsEmpty)
+        {
+            progress?.Report("Değişiklik oluşmadı, talep yeniden uygulanıyor…");
+            try
+            {
+                await ApplyRepromptResponseAsync(context, [], BuildRetryRequest(context, turn, message), ruleId, ct,
+                    removalRequest: message);
+                affected.AddRange(context.Scope);
+
+                ApplyChatDeterministicLayer(context, affected);
+                turn.Changes = ModelChangeSet.Compare(before, context.Model);
+
+                if (!turn.Changes.IsEmpty)
+                {
+                    turn.Retried = true;
+                    turn.NotApplied.Clear();
+                    turn.Unsupported.Clear();
+                }
+            }
+            catch (PipelineException ex)
+            {
+                turn.NotApplied.Add($"Yeniden deneme başarısız: {ex.Message}");
+            }
+        }
+        else if (turn.Unsupported.Count > 0)
+        {
+            // Router'ın tanımadığı kısım genel yoldan modele iletildi ve model değişti:
+            // bu kısım artık "anlaşılmadı" sayılmaz.
+            turn.Unsupported.Clear();
+        }
+
         turn.Status = DetermineStatus(turn);
 
         progress?.Report("Yanıt hazırlanıyor…");
@@ -303,6 +372,52 @@ public class ModelPipeline
         var package = await SerializeAsync(context, progress, ct);
         package.LastChatTurn = turn;
         return (package, turn);
+    }
+
+    /// <summary>Yalnızca etkilenen tablolar yeniden normalize edilir; model bütün olarak doğrulanır.</summary>
+    private void ApplyChatDeterministicLayer(PipelineContext context, IEnumerable<string> affected)
+    {
+        var scopeNames = affected
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        ApplyDeterministicLayer(context, scopeNames.Count > 0 ? scopeNames : null);
+    }
+
+    /// <summary>
+    /// İlk deneme modeli değiştirmediğinde gönderilen ikinci talep. Modelin
+    /// kendi notları ve router açıklamaları geri verilir: çoğu zaman model
+    /// ne yapılması gerektiğini doğru yazıp JSON'a koymayı atlıyor.
+    /// </summary>
+    private static string BuildRetryRequest(PipelineContext context, ChatTurn turn, string message)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(message.Trim());
+        sb.AppendLine();
+        sb.AppendLine("ÖNEMLİ: Bu talep için yapılan ilk denemede modelde HİÇBİR değişiklik oluşmadı.");
+        sb.AppendLine("Not veya açıklama yazmak değişiklik sayılmaz. Talebin gerektirdiği değişikliği " +
+                      "\"entities\", \"relationships\" veya kaldırma listelerinde GERÇEKTEN döndür.");
+        sb.AppendLine("Tablo ve alan adlarını MODEL'de yazdığı gibi kullan. Talep bir alanın özelliğini " +
+                      "(zorunlu, tekil, açıklama) değiştiriyorsa alanı yeni değeriyle \"attributes\" altında döndür.");
+
+        var hints = turn.Directives
+            .Select(d => d.Explanation)
+            .Concat(turn.Unsupported)
+            .Concat(turn.NotApplied)
+            .Concat(context.RepromptNotes)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Distinct()
+            .ToList();
+
+        if (hints.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("İlk denemede yazılan açıklamalar (bunları uygula):");
+            foreach (var hint in hints) sb.AppendLine($"- {hint}");
+        }
+
+        return sb.ToString().TrimEnd();
     }
 
     /// <summary>
@@ -314,7 +429,8 @@ public class ModelPipeline
         if (turn.Changes.IsEmpty)
         {
             if (turn.NotApplied.Count == 0)
-                turn.NotApplied.Add("Model üzerinde hiçbir değişiklik oluşmadı; talep anlaşılmamış olabilir.");
+                turn.NotApplied.Add("İki denemede de model üzerinde değişiklik oluşmadı. Tablo ve alan adını " +
+                                    "modelde göründüğü gibi yazarak tekrar deneyin.");
             return ChatTurnStatus.NotApplied;
         }
 
@@ -331,9 +447,13 @@ public class ModelPipeline
     /// </summary>
     private async Task WriteChatReplyAsync(PipelineContext context, ChatTurn turn, CancellationToken ct)
     {
+        var fallback = turn.IsQuestionOnly
+            ? "Soru yanıtlanamadı; model değiştirilmedi."
+            : turn.Changes.Describe();
+
         if (!_skills.Exists("chat"))
         {
-            turn.Reply = turn.Changes.Describe();
+            turn.Reply = fallback;
             return;
         }
 
@@ -345,7 +465,10 @@ public class ModelPipeline
                 ? "(uygulanamayan bir şey yok)"
                 : string.Join("\n", turn.NotApplied.Select(text => $"- {text}")),
             ["MODEL"] = FormatModelOutline(context.Model),
-            ["PENDING"] = FormatPendingItems(context.PendingItems)
+            ["PENDING"] = FormatPendingItems(context.PendingItems),
+            ["QUESTION"] = turn.IsQuestionOnly
+                ? "evet — kullanıcı soru soruyor, model değiştirilmedi; soruyu MODEL'e bakarak yanıtla"
+                : "hayır — bir değişiklik talebi"
         });
 
         JsonNode response;
@@ -356,12 +479,12 @@ public class ModelPipeline
         catch (PipelineException)
         {
             // Yanıt üretilemezse turun sonucu yine de gösterilir.
-            turn.Reply = turn.Changes.Describe();
+            turn.Reply = fallback;
             return;
         }
 
         var reply = response.Str("reply").Trim();
-        turn.Reply = string.IsNullOrWhiteSpace(reply) ? turn.Changes.Describe() : reply;
+        turn.Reply = string.IsNullOrWhiteSpace(reply) ? fallback : reply;
 
         foreach (var node in response.Array("suggestions"))
         {
@@ -419,24 +542,38 @@ public class ModelPipeline
         {
             var operation = ParseOperation(node.Str("operation"));
             var entity = node.Str("entity");
+            var newName = node.Str("newName");
 
-            // Var olmayan tabloya atıf yapan direktif uygulanmaz.
+            // Yeni tablo eklenirken ad çoğu zaman "entity" alanına yazılıyor;
+            // henüz var olmayan tablo burada beklenen durumdur.
+            if (operation == DirectiveOperation.AddEntity &&
+                !string.IsNullOrWhiteSpace(entity) && context.Model.FindEntity(entity) is null)
+            {
+                if (string.IsNullOrWhiteSpace(newName)) newName = entity;
+                entity = string.Empty;
+            }
+
+            // Var olmayan tabloya atıf yapan direktif uygulanmaz; ama talep
+            // kaybolmasın diye genel yola devredilir.
             if (!string.IsNullOrWhiteSpace(entity) && context.Model.FindEntity(entity) is null)
             {
-                turn.NotApplied.Add($"'{entity}' adında bir tablo yok.");
+                turn.Unsupported.Add($"'{entity}' adında bir tablo bulunamadı: {node.Str("explanation")}".TrimEnd(' ', ':'));
                 continue;
             }
 
             directives.Add(new ChatDirective
             {
                 Operation = operation,
-                Entity = entity,
+                Entity = context.Model.FindEntity(entity)?.TechnicalName ?? entity,
                 Field = node.Str("field"),
-                NewName = node.Str("newName"),
+                NewName = newName,
                 TargetEntity = node.Str("targetEntity"),
                 Cardinality = ParseCardinality(node.Str("cardinality")),
                 Fields = node.StrList("fields"),
-                Explanation = node.Str("explanation")
+                Explanation = node.Str("explanation"),
+                Description = node.Str("description"),
+                Required = OptionalBool(node, "required"),
+                Unique = OptionalBool(node, "unique")
             });
         }
 
@@ -455,8 +592,15 @@ public class ModelPipeline
         "remove-relation" => DirectiveOperation.RemoveRelation,
         "change-cardinality" => DirectiveOperation.ChangeCardinality,
         "split-entity" => DirectiveOperation.SplitEntity,
+        "set-description" => DirectiveOperation.SetDescription,
+        "update-field" => DirectiveOperation.UpdateField,
+        "question" => DirectiveOperation.Question,
         _ => DirectiveOperation.General
     };
+
+    /// <summary>Alan yoksa null — "değişmesin" anlamına gelir, false değil.</summary>
+    private static bool? OptionalBool(JsonNode? node, string property) =>
+        node?[property] is null ? null : node.Bool(property);
 
     /// <summary>
     /// Modelin güncel hali. Kullanıcı bir alana teknik adıyla da görünen adıyla da
@@ -469,7 +613,8 @@ public class ModelPipeline
 
         foreach (var entity in model.Entities)
         {
-            sb.AppendLine($"- Tablo: {entity.Name} (teknik ad: {entity.TechnicalName})");
+            sb.AppendLine($"- Tablo: {entity.Name} (teknik ad: {entity.TechnicalName})" +
+                          (string.IsNullOrWhiteSpace(entity.Description) ? "" : $" — {entity.Description}"));
 
             foreach (var attribute in entity.Attributes)
             {
@@ -481,7 +626,13 @@ public class ModelPipeline
                     ? attribute.TechnicalName
                     : $"{attribute.Name} (teknik ad: {attribute.TechnicalName})";
 
-                sb.AppendLine($"    - {display}{marks}");
+                var flags = attribute.IsPrimaryKey ? string.Empty
+                    : (attribute.IsRequired ? " zorunlu" : " opsiyonel") + (attribute.IsUnique ? ", tekil" : string.Empty);
+                var description = string.IsNullOrWhiteSpace(attribute.Description)
+                    ? string.Empty
+                    : $" — {attribute.Description}";
+
+                sb.AppendLine($"    - {display}{marks}{flags}{description}");
             }
         }
 
@@ -531,8 +682,13 @@ public class ModelPipeline
     /// Modelden değişiklik ister ve yanıtı modele birleştirir. Hem reprompt hem de
     /// sohbetteki hedefli olmayan talepler bu yolu kullanır.
     /// </summary>
+    /// <param name="removalRequest">
+    /// Silme kararının dayandırılacağı metin; verilmezse <paramref name="request"/>.
+    /// Yeniden denemede talebe eklenen yönlendirme metni silme gerekçesi sayılmasın diye ayrıdır.
+    /// </param>
     private async Task ApplyRepromptResponseAsync(PipelineContext context,
-        IReadOnlyCollection<string> scopeEntities, string request, string ruleId, CancellationToken ct)
+        IReadOnlyCollection<string> scopeEntities, string request, string ruleId, CancellationToken ct,
+        string? removalRequest = null)
     {
         context.Scope.Clear();
         foreach (var name in scopeEntities) context.Scope.Add(name);
@@ -551,7 +707,7 @@ public class ModelPipeline
         });
 
         var response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
-        MergeModelResponse(context, response, ruleId);
+        MergeModelResponse(context, response, ruleId, RemovalGuard.FromRequest(removalRequest ?? request));
     }
 
     /// <summary>
@@ -582,8 +738,50 @@ public class ModelPipeline
         });
 
         var response = await _llm.SendAsync(PipelineStage.AttributeDerivation, prompt, ct);
-        MergeModelResponse(context, response, ruleId);
+
+        // Ayrıştırmada taşınan alanlar kaynak tablodan kalkar; başka silme ancak
+        // mesaj açıkça istiyorsa uygulanır.
+        var guard = RemovalGuard.FromRequest(message,
+            directive.Operation == DirectiveOperation.SplitEntity ? directive.Fields : null);
+        MergeModelResponse(context, response, ruleId, guard);
+
+        if (directive.Operation == DirectiveOperation.SplitEntity)
+            MoveSplitFields(context.Model, directive);
+
         return true;
+    }
+
+    /// <summary>
+    /// Birleştirme toplayıcı olduğu için ayrıştırmada taşınan alanlar kaynak
+    /// tabloda da kalırdı. Taşıma kod tarafında tamamlanır: alan yeni tabloya
+    /// geçmişse kaynaktan kaldırılır, geçmemişse taşınır. Birincil anahtar taşınmaz.
+    /// </summary>
+    private static void MoveSplitFields(DataModel model, ChatDirective directive)
+    {
+        var source = model.FindEntity(directive.Entity);
+        var target = model.FindEntity(directive.NewName);
+        if (source is null || target is null || ReferenceEquals(source, target)) return;
+
+        foreach (var field in directive.Fields)
+        {
+            var technical = NamingRules.ToTechnicalName(field);
+            var attribute = source.Attributes.FirstOrDefault(a =>
+                a.TechnicalName.Equals(technical, StringComparison.OrdinalIgnoreCase) ||
+                a.Name.Equals(field, StringComparison.OrdinalIgnoreCase));
+            if (attribute is null || attribute.IsPrimaryKey) continue;
+
+            if (!target.Attributes.Any(a => a.TechnicalName.Equals(attribute.TechnicalName, StringComparison.OrdinalIgnoreCase)))
+                target.Attributes.Add(attribute.Clone());
+
+            source.Attributes.Remove(attribute);
+        }
+    }
+
+    private static bool SameEntityName(DataModel model, string left, string right)
+    {
+        var a = model.FindEntity(left)?.TechnicalName ?? NamingRules.ToTechnicalName(left);
+        var b = model.FindEntity(right)?.TechnicalName ?? NamingRules.ToTechnicalName(right);
+        return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? SkillNameFor(DirectiveOperation operation) => operation switch
@@ -597,9 +795,11 @@ public class ModelPipeline
 
     /// <summary>
     /// Model yanıtını mevcut modele birleştirir. Silme yalnızca modelin açıkça
-    /// bildirdiği listeler üzerinden yapılır; dönmeyen öğeler korunur.
+    /// bildirdiği listeler üzerinden yapılır; dönmeyen öğeler korunur. Bildirilen
+    /// silme de <paramref name="guard"/> izin vermedikçe — yani kullanıcının talebi
+    /// o öğeyi açıkça kaldırmayı istemedikçe — uygulanmaz.
     /// </summary>
-    private void MergeModelResponse(PipelineContext context, JsonNode response, string ruleId)
+    private void MergeModelResponse(PipelineContext context, JsonNode response, string ruleId, RemovalGuard guard)
     {
         foreach (var node in response.Array("entities"))
         {
@@ -620,22 +820,56 @@ public class ModelPipeline
                 ModelMerger.UpsertRelationship(context.Model, relationship);
         }
 
-        var removedRelationships = ModelMerger.RemoveRelationships(context.Model,
-            response.Array("removedRelationships")
-                .Select(node => (From: node.Str("from"), To: node.Str("to")))
-                .Where(pair => !string.IsNullOrWhiteSpace(pair.From) && !string.IsNullOrWhiteSpace(pair.To))
-                .ToList());
+        var blocked = new List<string>();
 
-        // Alanlar da yalnızca açıkça bildirildiğinde silinir; dönmeyen alan korunur.
-        var removedFields = ModelMerger.RemoveAttributes(context.Model,
-            response.Array("removedFields")
-                .Select(node => (Entity: node.Str("entity"), Field: node.Str("field")))
-                .Where(pair => !string.IsNullOrWhiteSpace(pair.Entity) && !string.IsNullOrWhiteSpace(pair.Field))
-                .ToList());
+        // Aynı yanıtta hem eklenip hem silinen ilişki çelişkidir; eklenen korunur.
+        var returnedPairs = response.Array("relationships")
+            .Select(node => (From: FirstStr(node, "from", "fromEntity"), To: FirstStr(node, "to", "toEntity")))
+            .ToList();
 
-        var removed = ModelMerger.RemoveEntities(context.Model, response.StrList("removedEntities"));
+        var relationshipTargets = new List<(string From, string To)>();
+        foreach (var node in response.Array("removedRelationships"))
+        {
+            var (from, to) = (FirstStr(node, "from", "fromEntity"), FirstStr(node, "to", "toEntity"));
+            if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to)) continue;
+
+            var readded = returnedPairs.Any(pair =>
+                SameEntityName(context.Model, pair.From, from) && SameEntityName(context.Model, pair.To, to));
+
+            if (!readded && guard.AllowsRelationship(from, to)) relationshipTargets.Add((from, to));
+            else if (!readded) blocked.Add($"ilişki {from} → {to}");
+        }
+
+        var removedRelationships = ModelMerger.RemoveRelationships(context.Model, relationshipTargets);
+
+        // Alanlar da yalnızca açıkça bildirildiğinde ve talep istediğinde silinir.
+        var fieldTargets = new List<(string Entity, string Field)>();
+        foreach (var node in response.Array("removedFields"))
+        {
+            var (entity, field) = (node.Str("entity"), node.Str("field"));
+            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(field)) continue;
+
+            if (guard.AllowsField(entity, field)) fieldTargets.Add((entity, field));
+            else blocked.Add($"alan {entity}.{field}");
+        }
+
+        var removedFields = ModelMerger.RemoveAttributes(context.Model, fieldTargets);
+
+        var entityTargets = new List<string>();
+        foreach (var name in response.StrList("removedEntities"))
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            if (guard.AllowsEntity(name)) entityTargets.Add(name);
+            else blocked.Add($"tablo {name}");
+        }
+
+        var removed = ModelMerger.RemoveEntities(context.Model, entityTargets);
 
         context.RepromptNotes.Clear();
+        if (blocked.Count > 0)
+            context.RepromptNotes.Add(
+                $"Talepte istenmediği için silinmeyip korunan öğeler: {string.Join(", ", blocked)}");
         if (removed.Count > 0)
             context.RepromptNotes.Add($"Modelden kaldırılan varlıklar: {string.Join(", ", removed)}");
         if (removedFields.Count > 0)
@@ -884,10 +1118,8 @@ public class ModelPipeline
             var entity = ReadEntity(node);
             if (entity is null) continue;
 
-            // Yeniden çıkarımda mevcut alanlar korunur; alan adımı bunları tazeleyecek.
-            var existing = context.Model.FindEntity(entity.Name);
-            if (existing is not null) entity.Attributes = existing.Attributes;
-
+            // Mevcut tablonun alanları adaya taşınmaz: tablo birleştirilirken
+            // alanlarına dokunulmaz, alan adımı bunları ayrıca ele alır.
             candidates.Add(entity);
         }
 
@@ -895,13 +1127,22 @@ public class ModelPipeline
         context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.Entity);
         var entities = SourceGuard.FilterEntities(candidates, context.Input, context.PendingItems);
 
-        if (entities.Count == 0)
-            throw new PipelineException(PipelineStage.Extraction,
-                "Kurallardan hiç varlık çıkarılamadı. Kural listesini genişletip tekrar deneyin.");
+        // İlk üretimde model bu adımda kurulur.
+        if (context.Model.Entities.Count == 0)
+        {
+            if (entities.Count == 0)
+                throw new PipelineException(PipelineStage.Extraction,
+                    "Kurallardan hiç varlık çıkarılamadı. Kural listesini genişletip tekrar deneyin.");
 
-        context.Model.Entities = entities;
-        context.Model.Relationships.RemoveAll(r =>
-            context.Model.FindEntity(r.FromEntity) is null || context.Model.FindEntity(r.ToEntity) is null);
+            context.Model.Entities = entities;
+            return;
+        }
+
+        // Model zaten varsa (soru cevabı, yeniden çalıştırma) yeniden çıkarım
+        // modeli baştan yazmaz: yanıtta dönmeyen tablo silinmez, yalnızca yeni
+        // tablolar eklenir ve mevcutların açıklama/kaynak bilgisi güncellenir.
+        foreach (var entity in entities)
+            ModelMerger.UpsertEntity(context.Model, entity);
     }
 
     // ---------------------------------------------------------------- adım 2
@@ -929,8 +1170,18 @@ public class ModelPipeline
         }
 
         context.PendingItems.RemoveAll(p => p.Kind == PendingItemKind.Relationship);
-        context.Model.Relationships =
+        var relationships =
             SourceGuard.FilterRelationships(candidates, context.Input, context.Model, context.PendingItems);
+
+        if (context.Model.Relationships.Count == 0)
+        {
+            context.Model.Relationships = relationships;
+            return;
+        }
+
+        // Mevcut ilişkiler korunur; yanıt yalnızca ekler veya kardinaliteyi günceller.
+        foreach (var relationship in relationships)
+            ModelMerger.UpsertRelationship(context.Model, relationship);
     }
 
     // ---------------------------------------------------------------- adım 3
@@ -980,8 +1231,30 @@ public class ModelPipeline
             };
 
             var filtered = SourceGuard.FilterEntities([candidate], context.Input, context.PendingItems);
-            if (filtered.Count > 0) entity.Attributes = filtered[0].Attributes;
+            if (filtered.Count == 0) continue;
+
+            // Alanı olmayan tablo (ilk üretim) doğrudan doldurulur; alanları olan
+            // tabloya yanıt eklenerek birleştirilir — dönmeyen alan silinmez.
+            if (entity.Attributes.Count == 0)
+                entity.Attributes = filtered[0].Attributes;
+            else
+                ModelMerger.MergeAttributes(entity, filtered[0].Attributes);
         }
+
+        // Alan silme yalnızca bu turda verilen cevap açıkça istiyorsa yapılır.
+        var guard = RemovalGuard.FromRequest(string.Join("\n", context.Questions
+            .Where(q => q.IsAnswered && q.AppliedInRound == context.RoundNumber)
+            .Select(q => $"{q.Text} {q.Answer}")));
+
+        var removals = response.Array("removedFields")
+            .Select(node => (Entity: node.Str("entity"), Field: node.Str("field")))
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Entity) && !string.IsNullOrWhiteSpace(pair.Field))
+            .Where(pair => guard.AllowsField(pair.Entity, pair.Field))
+            .ToList();
+
+        var removedFields = ModelMerger.RemoveAttributes(context.Model, removals);
+        if (removedFields.Count > 0)
+            context.NormalizationNotes.Add($"Cevaba göre kaldırılan alanlar: {string.Join(", ", removedFields)}");
 
         ApplyDeterministicLayer(context);
     }
@@ -1051,6 +1324,9 @@ public class ModelPipeline
             note.FromRuleEngine = true;
             AddAmbiguity(context, note);
         }
+
+        // Anahtar ve standart alanların açıklaması model kuralından bellidir.
+        FieldDescriptions.ApplyDefaults(context.Model);
 
         context.ValidationIssues.Clear();
         context.ValidationIssues.AddRange(_validator.Validate(context.Model));
@@ -1382,6 +1658,8 @@ public class ModelPipeline
     private async Task<ModelPackage> SerializeAsync(PipelineContext context,
         IProgress<string>? progress, CancellationToken ct)
     {
+        await DescribeFieldsAsync(context, progress, ct);
+
         progress?.Report("Özet ve öneriler hazırlanıyor…");
 
         var prompt = _prompts.Render("summary", new Dictionary<string, string>
@@ -1419,6 +1697,62 @@ public class ModelPipeline
         package.MermaidCode = MermaidSerializer.Serialize(context.Model);
         package.ModelJson = ModelJson.Serialize(context.Model);
         return package;
+    }
+
+    /// <summary>
+    /// Açıklaması boş kalan her alan için yalın Türkçe bir açıklama istenir.
+    /// Yalnızca eksikler gönderilir; dolu açıklamaya — özellikle kullanıcının
+    /// sohbetten yazdığına — dokunulmaz. Başarısızlık akışı durdurmaz.
+    /// </summary>
+    private async Task DescribeFieldsAsync(PipelineContext context, IProgress<string>? progress, CancellationToken ct)
+    {
+        if (FieldDescriptions.ApplyDefaults(context.Model) == 0 || !_skills.Exists("describe-fields")) return;
+
+        var missing = new StringBuilder();
+        foreach (var entity in context.Model.Entities)
+        {
+            var fields = entity.Attributes.Where(a => string.IsNullOrWhiteSpace(a.Description)).ToList();
+            if (fields.Count == 0) continue;
+
+            missing.AppendLine($"- Tablo: {entity.TechnicalName}" +
+                               (string.IsNullOrWhiteSpace(entity.Description) ? "" : $" — {entity.Description}"));
+            foreach (var field in fields)
+                missing.AppendLine($"    - {field.TechnicalName}" +
+                                   (field.Name.Equals(field.TechnicalName, StringComparison.Ordinal) ? "" : $" ({field.Name})"));
+        }
+
+        progress?.Report("Alan açıklamaları yazılıyor…");
+        var prompt = _skills.Render("describe-fields", new Dictionary<string, string>
+        {
+            ["RULES"] = FormatRules(context.Input),
+            ["FIELDS"] = missing.ToString().TrimEnd()
+        });
+
+        JsonNode response;
+        try
+        {
+            response = await _llm.SendAsync(PipelineStage.Serialization, prompt, ct);
+        }
+        catch (PipelineException ex)
+        {
+            context.NormalizationNotes.Add($"Alan açıklamaları yazılamadı: {ex.Message}");
+            return;
+        }
+
+        foreach (var node in response.Array("descriptions"))
+        {
+            var entity = context.Model.FindEntity(node.Str("entity"));
+            var fieldName = NamingRules.ToTechnicalName(node.Str("field"));
+            var text = node.Str("description").Trim();
+            if (entity is null || fieldName.Length == 0 || text.Length == 0) continue;
+
+            var attribute = entity.Attributes.FirstOrDefault(a =>
+                a.TechnicalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+
+            // Yalnızca boş açıklama doldurulur.
+            if (attribute is not null && string.IsNullOrWhiteSpace(attribute.Description))
+                attribute.Description = text;
+        }
     }
 
     /// <summary>Aynı öneri tekrar eklenmez; kullanıcının kararı korunur.</summary>
@@ -1521,7 +1855,7 @@ public class ModelPipeline
         {
             Name = name.Trim(),
             TechnicalName = NamingRules.ToTechnicalName(name),
-            Description = node.Str("description"),
+            Description = FirstStr(node, "description", "definition"),
             SourceRuleIds = ruleIds,
             Origin = node.Str("origin").Trim().Equals("mevcut", StringComparison.OrdinalIgnoreCase)
                 ? EntityOrigin.Existing
@@ -1543,19 +1877,23 @@ public class ModelPipeline
             var ruleIds = ReadSources(node);
             if (extraRuleId is not null && !ruleIds.Contains(extraRuleId)) ruleIds.Add(extraRuleId);
 
-            var references = node.Str("references");
-            var isForeignKey = node.Bool("foreignKey") || !string.IsNullOrWhiteSpace(references);
+            // Skill şemaları "isPrimaryKey"/"referencesEntity" adlarını kullanıyor,
+            // prompt şemaları "primaryKey"/"references"; ikisi de okunur.
+            var references = FirstStr(node, "references", "referencesEntity");
+            var isForeignKey = node.Bool("foreignKey") || node.Bool("isForeignKey") ||
+                               !string.IsNullOrWhiteSpace(references);
 
             attributes.Add(new EntityAttribute
             {
                 Name = name.Trim(),
                 TechnicalName = NamingRules.ToTechnicalName(name),
-                IsPrimaryKey = node.Bool("primaryKey"),
+                IsPrimaryKey = node.Bool("primaryKey") || node.Bool("isPrimaryKey"),
                 IsForeignKey = isForeignKey,
                 ReferencesEntity = string.IsNullOrWhiteSpace(references) ? null : references.Trim(),
                 ReferencesAttribute = node.Str("referencesAttribute") is { Length: > 0 } refAttr ? refAttr : null,
                 IsRequired = node.Bool("required", true),
                 IsUnique = node.Bool("unique"),
+                Description = node.Str("description").Trim(),
                 SourceRuleIds = ruleIds,
                 Certainty = ReadCertainty(node),
                 ConfidenceReason = node.Str("confidenceReason")
@@ -1565,10 +1903,13 @@ public class ModelPipeline
         return attributes;
     }
 
+    private static string FirstStr(JsonNode? node, params string[] properties) =>
+        properties.Select(p => node.Str(p)).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
+
     private static Relationship? ReadRelationship(JsonNode? node, string? extraRuleId = null)
     {
-        var from = node.Str("from");
-        var to = node.Str("to");
+        var from = FirstStr(node, "from", "fromEntity");
+        var to = FirstStr(node, "to", "toEntity");
         if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to)) return null;
 
         var ruleIds = ReadSources(node);

@@ -30,7 +30,7 @@ public class ModelPipelineTests
         await pipeline.GenerateAsync(new PipelineContext { Input = SampleInput() });
 
         Assert.Equal(
-            ["rule-relations", "extraction", "relationships", "attributes", "normalization", "gaps", "questions", "summary"],
+            ["rule-relations", "extraction", "relationships", "attributes", "normalization", "gaps", "questions", "describe", "summary"],
             provider.Stages);
     }
 

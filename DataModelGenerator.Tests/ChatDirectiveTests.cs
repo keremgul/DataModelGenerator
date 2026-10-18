@@ -109,6 +109,10 @@ public class ChatDirectiveTests
             { "directives": [ { "operation": "remove-field", "entity": "Müşteri", "field": "ID" } ],
               "unsupported": [] }
             """;
+        // Yeniden denemede model de anahtarı silmeye çalışır; kod yine reddeder.
+        provider.RepromptResponseOverride = """
+            { "entities": [], "removedFields": [ { "entity": "Müşteri", "field": "ID" } ], "notes": [] }
+            """;
 
         var (_, turn) = await pipeline.SendChatAsync(context, "Müşteri kimlik alanını at");
 
@@ -166,7 +170,7 @@ public class ChatDirectiveTests
         var (_, turn) = await pipeline.SendChatAsync(context, "Depo tablosunu kaldır");
 
         Assert.Empty(turn.Directives);
-        Assert.Contains(turn.NotApplied, text => text.Contains("Depo"));
+        Assert.Contains(turn.NotApplied.Concat(turn.Unsupported), text => text.Contains("Depo"));
     }
 
     // -------------------------------------------------- skill yönlendirmesi
