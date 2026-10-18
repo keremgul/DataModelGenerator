@@ -28,6 +28,15 @@
             <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0"
                          Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
             <TextBlock Text="{Binding ProgressText}" Style="{StaticResource InfoText}" Margin="0,4,0,0"/>
+
+            <!-- Doğrulama sekmesi kaldırıldı; ciddi bulgular burada duyurulur. -->
+            <Border Background="#FDECEA" BorderBrush="#F0B4AE" BorderThickness="1" CornerRadius="3"
+                    Padding="10,6" Margin="0,6,0,0" HorizontalAlignment="Left"
+                    ToolTip="{Binding ValidationDetails}"
+                    Visibility="{Binding ValidationWarning, Converter={StaticResource NullToCollapsed}}">
+                <TextBlock Text="{Binding ValidationWarning}" Foreground="#8C1D18"
+                           FontSize="12" FontWeight="SemiBold"/>
+            </Border>
         </StackPanel>
 
         <TabControl Grid.Row="1" Margin="24,0,24,0">
@@ -182,6 +191,27 @@
                     <TextBlock DockPanel.Dock="Top" Text="{Binding PendingCountText}"
                                Style="{StaticResource InfoText}" Margin="12,10,12,6"/>
 
+                    <!-- Normalizasyon notları: motorun ne yaptığını anlatır,
+                         beklemede listesiyle aynı aileden. -->
+                    <Border DockPanel.Dock="Bottom" Background="#FAFAFA" BorderBrush="#DDD"
+                            BorderThickness="0,1,0,0" Padding="12,8" MaxHeight="160"
+                            Visibility="{Binding NormalizationNotes, Converter={StaticResource CountToVisibility}}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Motor Notları" FontWeight="SemiBold"
+                                           Foreground="#444" Margin="0,0,0,4"/>
+                                <ItemsControl ItemsSource="{Binding NormalizationNotes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2"
+                                                       FontSize="12" Foreground="#555"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
                     <DataGrid ItemsSource="{Binding PendingItems}" AutoGenerateColumns="False" IsReadOnly="True"
                               GridLinesVisibility="Horizontal" HeadersVisibility="Column"
                               AutomationProperties.Name="BeklemedeListesi">
@@ -251,66 +281,6 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="Belirsizlikler">
-                <DataGrid ItemsSource="{Binding Ambiguities}" AutoGenerateColumns="False" IsReadOnly="True"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                        <DataGridTextColumn Header="Etki" Binding="{Binding Impact}" Width="60"/>
-                        <DataGridTextColumn Header="Tür" Binding="{Binding Kind}" Width="120"/>
-                        <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="180"/>
-                        <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*"/>
-                        <DataGridTextColumn Header="Uygulanan Varsayılan" Binding="{Binding AppliedDefault}" Width="160"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
-
-            <!-- Doğrulama + normalizasyon notları: ikisi de modelin sağlık raporu. -->
-            <TabItem Header="Doğrulama">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <DataGrid Grid.Row="0" ItemsSource="{Binding ValidationIssues}" AutoGenerateColumns="False"
-                              IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Seviye" Binding="{Binding Severity}" Width="80">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground"
-                                                Value="{Binding Severity, Converter={StaticResource SeverityToBrush}}"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Kod" Binding="{Binding Code}" Width="200"/>
-                            <DataGridTextColumn Header="Hedef" Binding="{Binding Target}" Width="200"/>
-                            <DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <Border Grid.Row="1" Background="#FAFAFA" BorderBrush="#DDD" BorderThickness="0,1,0,0"
-                            Padding="12,8" MaxHeight="180"
-                            Visibility="{Binding NormalizationNotes, Converter={StaticResource CountToVisibility}}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
-                                <TextBlock Text="Normalizasyon Notları" FontWeight="SemiBold"
-                                           Foreground="#444" Margin="0,0,0,4"/>
-                                <ItemsControl ItemsSource="{Binding NormalizationNotes}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2"
-                                                       FontSize="12" Foreground="#555"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
-            </TabItem>
         </TabControl>
 
         <Border Grid.Row="2" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="16,10">

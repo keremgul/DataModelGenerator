@@ -189,6 +189,27 @@ Click-Step 5
 Start-Sleep -Milliseconds 800
 Save-Shot "flow-9-disa-aktar"
 
+# --- 8. Her Seyi Temizle: onay kutusu ve bos duruma donus ------------------
+Invoke-Named "Her Şeyi Temizle"
+Start-Sleep -Milliseconds 1500
+Save-Shot "flow-11b-temizle-tiklandi"
+
+# Onay kutusu uygulamaya ait ayri bir pencere. Dugme adi Windows diline gore
+# degistigi icin AutomationId ile aranir: IDYES = "6".
+# Onay kutusu yerel bir Win32 penceresi; UIA agacindan guvenilir okunmuyor.
+# Varsayilan dugme "Hayir" oldugu icin Enter degil, Yes/Evet kisayolu gonderilir.
+[System.Windows.Forms.SendKeys]::SendWait("y")
+Start-Sleep -Seconds 2
+
+$cleared = Find-By "Adım 2 — Business Rule Listesi"
+if ($null -ne $cleared) {
+    Save-Shot "flow-12-temizlendi"
+    Write-Host "6) temizle calisti: Girdi adimina donuldu"
+} else {
+    Save-Shot "flow-12-temizlenemedi"
+    Write-Host "6) HATA: temizlemeden sonra Girdi adimina donulmedi"
+}
+
 Write-Host "--- durum satirlari ---"
 Status | Where-Object { $_ -match 'Uygulan|değişiklik|güncel|tamamland|cevap' } | Select-Object -First 10
 

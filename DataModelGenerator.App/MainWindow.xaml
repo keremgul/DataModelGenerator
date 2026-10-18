@@ -23,12 +23,18 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="Veri Modeli Generator" Foreground="White"
                            FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
 
-                <Border Grid.Column="1" CornerRadius="3" Padding="10,4" Background="#2F5496">
+                <!-- Her şeyi temizleyip tasarıma baştan başlamak için. -->
+                <Button Grid.Column="1" Content="Her Şeyi Temizle" Command="{Binding ResetModelCommand}"
+                        Margin="0,0,10,0" Padding="10,4" MinWidth="0" FontSize="12"
+                        ToolTip="Model, kural listesi, sorular ve sohbet geçmişi silinir. Bağlantı profili korunur."/>
+
+                <Border Grid.Column="2" CornerRadius="3" Padding="10,4" Background="#2F5496">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="●" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="14">
                             <TextBlock.Style>

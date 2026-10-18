@@ -30,6 +30,17 @@ public class SessionState
         };
     }
 
+    /// <summary>
+    /// Modeli, kuralları ve tüm tur geçmişini siler; tasarıma baştan başlanır.
+    /// Bağlantı profili korunur — yeniden seçtirmenin anlamı yok.
+    /// </summary>
+    public void Reset()
+    {
+        Input = new ProjectInput();
+        Context = null;
+        Package = null;
+    }
+
     public ModelPipeline CreatePipeline()
     {
         if (ActiveProfile is null || Provider is null)

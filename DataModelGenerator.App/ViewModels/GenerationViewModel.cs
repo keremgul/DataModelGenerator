@@ -24,6 +24,10 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
     [ObservableProperty] private string _traceFilterText = string.Empty;
     [ObservableProperty] private string _pendingCountText = string.Empty;
 
+    /// <summary>Doğrulama sekmesi kaldırıldı; ciddi sorunlar bu şeritte duyurulur.</summary>
+    [ObservableProperty] private string _validationWarning = string.Empty;
+    [ObservableProperty] private string _validationDetails = string.Empty;
+
     public ObservableCollection<SuggestionItem> Suggestions { get; } = new();
     public ObservableCollection<string> NormalizationNotes { get; } = new();
     public ObservableCollection<Ambiguity> Ambiguities { get; } = new();
@@ -255,6 +259,8 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
         foreach (var issue in package.ValidationIssues.OrderByDescending(i => i.Severity))
             ValidationIssues.Add(issue);
 
+        ShowValidationWarning(package);
+
         PendingItems.Clear();
         foreach (var item in package.PendingItems) PendingItems.Add(item);
         PendingCountText = PendingItems.Count == 0
@@ -275,6 +281,34 @@ public partial class GenerationViewModel : ObservableObject, IRefreshable
             : TraceSources.FirstOrDefault(s => s.RuleId == previousFilter);
 
         ApplyTraceFilter();
+    }
+
+    /// <summary>
+    /// Hata ve uyarı seviyesindeki doğrulama bulguları, sekme olmadan da
+    /// görünür kalsın diye üstte tek satırda özetlenir; ayrıntı tooltip'te.
+    /// </summary>
+    private void ShowValidationWarning(ModelPackage package)
+    {
+        var serious = package.ValidationIssues
+            .Where(i => i.Severity >= ValidationSeverity.Warning)
+            .ToList();
+
+        if (serious.Count == 0)
+        {
+            ValidationWarning = string.Empty;
+            ValidationDetails = string.Empty;
+            return;
+        }
+
+        var errors = serious.Count(i => i.Severity == ValidationSeverity.Error);
+        var warnings = serious.Count - errors;
+
+        var parts = new List<string>();
+        if (errors > 0) parts.Add($"{errors} hata");
+        if (warnings > 0) parts.Add($"{warnings} uyarı");
+
+        ValidationWarning = $"Doğrulama: {string.Join(", ", parts)} — ayrıntı için üzerine gelin.";
+        ValidationDetails = string.Join("\n", serious.Select(i => $"[{i.Severity}] {i.Target}: {i.Message}"));
     }
 
     /// <summary>Kaynak seçilmişse yalnızca o kaynaktan türeyen alanlar gösterilir.</summary>

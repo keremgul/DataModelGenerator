@@ -58,16 +58,14 @@ public static class MermaidSerializer
         };
     }
 
-    private static string BuildComment(EntityAttribute attribute)
-    {
-        var parts = new List<string>();
-        if (attribute.SourceRuleIds.Count > 0)
-            parts.Add(string.Join(",", attribute.SourceRuleIds));
-        if (attribute.IsForeignKey && !string.IsNullOrWhiteSpace(attribute.ReferencesEntity))
-            parts.Add($"→{attribute.ReferencesEntity}");
-
-        return parts.Count == 0 ? string.Empty : $" \"{EscapeLabel(string.Join(" | ", parts))}\"";
-    }
+    /// <summary>
+    /// Diyagramda yalnızca yapısal bilgi gösterilir. Kaynak kimlikleri (BR-01,
+    /// Q-03…) buraya yazılmaz; izlenebilirlik için Özet sekmesindeki tablo var.
+    /// </summary>
+    private static string BuildComment(EntityAttribute attribute) =>
+        attribute.IsForeignKey && !string.IsNullOrWhiteSpace(attribute.ReferencesEntity)
+            ? $" \"{EscapeLabel($"→{attribute.ReferencesEntity}")}\""
+            : string.Empty;
 
     private static string Sanitize(string name)
     {

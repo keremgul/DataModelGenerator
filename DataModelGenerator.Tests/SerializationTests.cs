@@ -43,6 +43,26 @@ public class SerializationTests
         Assert.Contains("alan MUSTERIID FK", mermaid);
     }
 
+    /// <summary>
+    /// Diyagram yapıyı gösterir; kaynak izleri Özet sekmesindeki tablodadır.
+    /// </summary>
+    [Fact]
+    public void Mermaid_KaynakKimliklerineYerVermez()
+    {
+        var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
+
+        Assert.DoesNotContain("BR-1", mermaid);
+        Assert.DoesNotContain("BR-2", mermaid);
+    }
+
+    [Fact]
+    public void Mermaid_YabanciAnahtarHedefiniGosterir()
+    {
+        var mermaid = MermaidSerializer.Serialize(TestModels.CustomerOrder());
+
+        Assert.Contains("→MUSTERI", mermaid);
+    }
+
     [Fact]
     public void ModelJson_SerializeVeDeserializeAyniModeliKorur()
     {

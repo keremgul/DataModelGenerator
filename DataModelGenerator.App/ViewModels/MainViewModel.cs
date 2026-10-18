@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -60,15 +61,8 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        _pages =
-        [
-            new ConnectionViewModel(_session, this),
-            new InputViewModel(_session, this),
-            new GenerationViewModel(_session, this),
-            new QuestionsViewModel(_session, this),
-            new ChatViewModel(_session, this),
-            new ExportViewModel(_session, this)
-        ];
+        _pages = [];
+        BuildPages();
 
         var titles = new[]
         {
@@ -80,6 +74,48 @@ public partial class MainViewModel : ObservableObject
             Steps.Add(new StepItem { Title = titles[i], Index = i });
 
         NavigateToStep(0);
+    }
+
+    /// <summary>
+    /// Sayfa görünüm modelleri yeniden kurulur. Temizlemede her ekranın kendi
+    /// durumunu ayrı ayrı sıfırlamak yerine sayfalar baştan oluşturulur.
+    /// </summary>
+    private void BuildPages()
+    {
+        _pages.Clear();
+        _pages.AddRange(
+        [
+            new ConnectionViewModel(_session, this),
+            new InputViewModel(_session, this),
+            new GenerationViewModel(_session, this),
+            new QuestionsViewModel(_session, this),
+            new ChatViewModel(_session, this),
+            new ExportViewModel(_session, this)
+        ]);
+    }
+
+    /// <summary>
+    /// Modeli, kuralları, soruları ve sohbet geçmişini siler; tasarıma baştan
+    /// başlanır. Geri alınamadığı için onay istenir. Bağlantı profili korunur.
+    /// </summary>
+    [RelayCommand]
+    private void ResetModel()
+    {
+        var answer = MessageBox.Show(
+            "Model, kural listesi, sorular ve sohbet geçmişi silinecek. " +
+            "Bağlantı profiliniz korunur.\n\nDevam edilsin mi?",
+            "Her Şeyi Temizle", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+
+        if (answer != MessageBoxResult.Yes) return;
+
+        _session.Reset();
+        BuildPages();
+
+        foreach (var step in Steps) step.State = StepState.Pending;
+        if (_session.HasConnection) Steps[0].State = StepState.Completed;
+
+        NavigateToStep(1);
+        SetStatus("Her şey temizlendi — tasarıma baştan başlayabilirsiniz.");
     }
 
     /// <summary>
