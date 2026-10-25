@@ -13,9 +13,9 @@
     <NeutralLanguage>tr-TR</NeutralLanguage>
 
     <!-- Sürüm: publish.ps1 -Version ile komut satırından geçilirse o kazanır. -->
-    <Version>2.4.0</Version>
-    <FileVersion>2.4.0.0</FileVersion>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <Version>2.4.1</Version>
+    <FileVersion>2.4.1.0</FileVersion>
+    <AssemblyVersion>2.4.1.0</AssemblyVersion>
 
     <!-- Bilgi sürümüne commit sha eklenmesin; "2.4.0" okunabilir kalsın. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
