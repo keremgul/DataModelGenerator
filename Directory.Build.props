@@ -1,0 +1,24 @@
+<!--
+  Tüm projelerin ortak assembly tanımları. Exe'nin özellik sayfasındaki
+  (Ayrıntılar sekmesi) şirket, ürün, telif ve sürüm alanları buradan gelir.
+  Projeye özel Title/Description ilgili .csproj dosyasındadır.
+-->
+<Project>
+
+  <PropertyGroup>
+    <Company>Vakifbank A.Ş.</Company>
+    <Product>Veri Modeli Generator</Product>
+    <Copyright>Copyright © Vakifbank 2026</Copyright>
+    <Trademark>Peak</Trademark>
+    <NeutralLanguage>tr-TR</NeutralLanguage>
+
+    <!-- Sürüm: publish.ps1 -Version ile komut satırından geçilirse o kazanır. -->
+    <Version>2.4.0</Version>
+    <FileVersion>2.4.0.0</FileVersion>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+
+    <!-- Bilgi sürümüne commit sha eklenmesin; "2.4.0" okunabilir kalsın. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

@@ -8,6 +8,8 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <AssemblyName>DataModelGenerator</AssemblyName>
+    <AssemblyTitle>Veri Modeli Generator</AssemblyTitle>
+    <Description>Business rule listesinden kavramsal ve mantıksal veri modeli üreten masaüstü uygulaması</Description>
     <PublishDocumentationFiles>false</PublishDocumentationFiles>
     <SatelliteResourceLanguages>tr;en</SatelliteResourceLanguages>
   </PropertyGroup>

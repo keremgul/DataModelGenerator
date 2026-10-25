@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <AssemblyTitle>Veri Modeli Generator — Çekirdek</AssemblyTitle>
+    <Description>Üretim hattı, kural motoru, normalizasyon ve dışa aktarım katmanı</Description>
   </PropertyGroup>
 
   <ItemGroup>

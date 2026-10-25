@@ -9,6 +9,11 @@ $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $output = Join-Path $root "publish\DataModelGenerator-v$Version-$Runtime"
 
+# Exe'nin sürümü paketin adıyla aynı olmalı; aksi halde kullanıcı 2.4.0 zip'ini
+# indirip dosya özelliklerinde başka bir sürüm görür. Dört parçaya tamamlanır.
+$fileVersion = ([version]$Version).ToString()
+while (($fileVersion -split '\.').Count -lt 4) { $fileVersion = "$fileVersion.0" }
+
 Write-Host "Yayın hazırlanıyor: $output"
 
 if (Test-Path $output) { Remove-Item $output -Recurse -Force }
@@ -18,6 +23,9 @@ dotnet publish (Join-Path $root "DataModelGenerator.App\DataModelGenerator.App.c
     --runtime $Runtime `
     --self-contained true `
     --output $output `
+    -p:Version=$Version `
+    -p:FileVersion=$fileVersion `
+    -p:AssemblyVersion=$fileVersion `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
