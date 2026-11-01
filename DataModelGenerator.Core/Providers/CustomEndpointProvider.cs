@@ -13,6 +13,13 @@ namespace DataModelGenerator.Core.Providers;
 /// </summary>
 public class CustomEndpointProvider : ModelProviderBase
 {
+    // .NET'in HttpClient'ı tarayıcıların aksine varsayılan olarak User-Agent
+    // eklemez. Bazı kurumsal nginx/WAF yapılandırmaları User-Agent'sız, script
+    // benzeri istekleri hiç uygulamaya ulaştırmadan 403 ile reddeder — gövdesiz,
+    // çıplak bir nginx hata sayfası (Test Plan Generator'da gözlemlendi) tam bu
+    // belirtiyi veriyor.
+    private const string UserAgent = "DataModelGenerator/2.0";
+
     public override string ProviderKey => "custom";
     public override string DisplayName => "Özel Endpoint (Offline)";
     public override bool RequiresApiKey => false;
@@ -21,6 +28,8 @@ public class CustomEndpointProvider : ModelProviderBase
     public override async Task<List<ModelInfo>> ListModelsAsync(ProviderConnectionSettings settings, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"{settings.BaseUrl.TrimEnd('/')}/v1/models");
+        req.Headers.UserAgent.ParseAdd(UserAgent);
+        req.Headers.Accept.ParseAdd("application/json");
         if (!string.IsNullOrWhiteSpace(settings.ApiKey))
             req.Headers.Add("Api-Key", settings.ApiKey);
 
@@ -41,6 +50,8 @@ public class CustomEndpointProvider : ModelProviderBase
         string systemPrompt, string userPrompt, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"{settings.BaseUrl.TrimEnd('/')}/call_llm");
+        req.Headers.UserAgent.ParseAdd(UserAgent);
+        req.Headers.Accept.ParseAdd("application/json");
         if (!string.IsNullOrWhiteSpace(settings.ApiKey))
             req.Headers.Add("Api-Key", settings.ApiKey);
 
